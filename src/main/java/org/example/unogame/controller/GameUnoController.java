@@ -45,12 +45,13 @@ public class GameUnoController {
         initVariables();
         this.gameUno.startGame();
         printCardsHumanPlayer();
+        printCardsMachinePlayer();
 
         threadSingUNOMachine = new ThreadSingUNOMachine(this.humanPlayer.getCardsPlayer());
         Thread t = new Thread(threadSingUNOMachine, "ThreadSingUNO");
         t.start();
 
-        threadPlayMachine = new ThreadPlayMachine(this.table, this.machinePlayer, this.tableImageView);
+        threadPlayMachine = new ThreadPlayMachine(this.table, this.machinePlayer, this.tableImageView, this);
         threadPlayMachine.start();
     }
 
@@ -90,6 +91,17 @@ public class GameUnoController {
         }
     }
 
+    private void printCardsMachinePlayer() {
+        gridPaneCardsMachine.getChildren().clear();
+
+        Card[] currentVisibleCardsMachinePlayer = gameUno.getCurrentVisibleCardsMachinePlayer(posInitCardToShow);
+
+        for (int i = 0; i < currentVisibleCardsMachinePlayer.length; i++) {
+            ImageView backCard = Card.getBackCardImageView(); //
+            gridPaneCardsMachine.add(backCard, i, 0);
+        }
+    }
+
     /**
      * Finds the position of a specific card in the human player's hand.
      *
@@ -116,6 +128,10 @@ public class GameUnoController {
             this.posInitCardToShow--;
             printCardsHumanPlayer();
         }
+    }
+
+    public void updateCardsMachinePlayer() {
+        printCardsMachinePlayer();
     }
 
     /**

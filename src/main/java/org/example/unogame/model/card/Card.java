@@ -40,6 +40,19 @@ public class Card {
         return card;
     }
 
+    // este metodo se usa para que la maquina obtenga la imagen de la parte de atras de la carta del uno
+    public static ImageView getBackCardImageView() {
+        Image backImage = new Image(Card.class.getResource(
+                org.example.unogame.model.unoenum.UnoEnum.CARD_UNO.getFilePath()
+        ).toString());
+
+        ImageView cardBackView = new ImageView(backImage);
+        cardBackView.setFitWidth(70);
+        cardBackView.setFitHeight(90);
+        cardBackView.setY(16);
+        return cardBackView;
+    }
+
     /**
      * Gets the ImageView representation of the card.
      *
