@@ -44,6 +44,21 @@ public class GameUno implements IGameUno {
                 machinePlayer.addCard(this.deck.takeCard());
             }
         }
+
+        Card initialCard; // para poner una carta apenas empiece el juego, que sean solo numeros
+        do {
+            initialCard = deck.takeCard(); // toma una carta del mazo
+        } while (!isNumberCard(initialCard)); // sigue buscando hasta encontrar una carta nuemrica
+        table.addCardOnTheTable(initialCard);
+    }
+
+    private boolean isNumberCard(Card card) {
+        try {
+            Integer.parseInt(card.getValue()); // pasamos de string a int
+            return true;
+        } catch (NumberFormatException e) {
+            return false;
+        }
     }
 
     /**

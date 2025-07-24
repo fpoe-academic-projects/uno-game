@@ -44,6 +44,7 @@ public class GameUnoController {
     public void initialize() {
         initVariables();
         this.gameUno.startGame();
+        tableImageView.setImage(this.table.getCurrentCardOnTheTable().getImage()); // mostrar visualmente a carta inciial en la mesa
         printCardsHumanPlayer();
         printCardsMachinePlayer();
 
@@ -79,12 +80,13 @@ public class GameUnoController {
             ImageView cardImageView = card.getCard();
 
             cardImageView.setOnMouseClicked((MouseEvent event) -> {
-                // Aqui deberian verificar si pueden en la tabla jugar esa carta
-                gameUno.playCard(card);
-                tableImageView.setImage(card.getImage());
-                humanPlayer.removeCard(findPosCardsHumanPlayer(card));
-                threadPlayMachine.setHasPlayerPlayed(true);
-                printCardsHumanPlayer();
+                if (canPlayCard(card, this.table)) { // le pasamos el tablero para usarlo mas adelante
+                    gameUno.playCard(card);
+                    tableImageView.setImage(card.getImage());
+                    humanPlayer.removeCard(findPosCardsHumanPlayer(card));
+                    threadPlayMachine.setHasPlayerPlayed(true);
+                    printCardsHumanPlayer();
+                }
             });
 
             this.gridPaneCardsPlayer.add(cardImageView, i, 0);
@@ -115,6 +117,33 @@ public class GameUnoController {
             }
         }
         return -1;
+    }
+
+    public static boolean canPlayCard(Card cardPlay, Table table) { // recibe carta a jugar y la mesa
+        Card currentCard = table.getCurrentCardOnTheTable(); // con el tablero que recibe de parametro, obtenemos la carta actual en la mesa
+
+        String colorToPlay = cardPlay.getColor();
+        String valueToPlay = cardPlay.getValue();
+
+        String colorOnTable = currentCard.getColor();
+        String valueOnTable = currentCard.getValue();
+
+        // siempre se pueden jugar
+        if ("WILD".equals(valueToPlay) || "+4".equals(valueToPlay)) {
+            return true;
+        }
+
+        // coincide el color
+        if (colorToPlay != null && colorOnTable != null && colorToPlay.equals(colorOnTable)) {
+            return true;
+        }
+
+        // coincide el valor (numero, reverse, skip, +2)
+        if (valueToPlay != null && valueOnTable != null && valueToPlay.equals(valueOnTable)) {
+            return true;
+        }
+
+        return false;
     }
 
     /**

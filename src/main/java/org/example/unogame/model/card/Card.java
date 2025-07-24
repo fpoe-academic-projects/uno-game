@@ -2,6 +2,7 @@ package org.example.unogame.model.card;
 
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
+import org.example.unogame.model.unoenum.UnoEnum;
 
 /**
  * Represents a card in the Uno game.
@@ -12,6 +13,7 @@ public class Card {
     private String color;
     private Image image;
     private ImageView cardImageView;
+    private UnoEnum cardEnum;
 
     /**
      * Constructs a Card with the specified image URL and name.
@@ -69,6 +71,14 @@ public class Card {
      */
     public Image getImage() {
         return image;
+    }
+
+    public String getEnumName() {
+        if (cardEnum != null) {
+            return cardEnum.name();
+        } else {
+            return "";
+        }
     }
 
     public String getValue() {
