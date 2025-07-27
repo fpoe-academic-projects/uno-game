@@ -3,6 +3,7 @@ package org.example.unogame;
 import javafx.application.Application;
 import javafx.stage.Stage;
 import org.example.unogame.view.GameUnoStage;
+import org.example.unogame.view.WelcomeStage;
 
 import java.io.IOException;
 
@@ -28,6 +29,6 @@ public class Main extends Application {
      */
     @Override
     public void start(Stage primaryStage) throws IOException {
-        GameUnoStage.getInstance();
+        WelcomeStage.getInstance();
     }
 }

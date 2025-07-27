@@ -53,12 +53,8 @@ public class GameUno implements IGameUno {
     }
 
     private boolean isNumberCard(Card card) {
-        try {
-            Integer.parseInt(card.getValue()); // pasamos de string a int
-            return true;
-        } catch (NumberFormatException e) {
-            return false;
-        }
+        String value = card.getValue();
+        return value != null && value.matches("[0-9]");
     }
 
     /**

@@ -27,6 +27,12 @@ public class GameUnoController {
     @FXML
     private ImageView tableImageView;
 
+    @FXML
+    private ImageView backButton;
+
+    @FXML
+    private ImageView nextButton;
+
     private Player humanPlayer;
     private Player machinePlayer;
     private Deck deck;
@@ -152,7 +158,7 @@ public class GameUnoController {
      * @param event the action event
      */
     @FXML
-    void onHandleBack(ActionEvent event) {
+    void onHandleBack(MouseEvent event) {
         if (this.posInitCardToShow > 0) {
             this.posInitCardToShow--;
             printCardsHumanPlayer();
@@ -169,7 +175,7 @@ public class GameUnoController {
      * @param event the action event
      */
     @FXML
-    void onHandleNext(ActionEvent event) {
+    void onHandleNext(MouseEvent event) {
         if (this.posInitCardToShow < this.humanPlayer.getCardsPlayer().size() - 4) {
             this.posInitCardToShow++;
             printCardsHumanPlayer();
