@@ -14,7 +14,7 @@
    <left>
       <Pane prefHeight="200.0" prefWidth="200.0" BorderPane.alignment="CENTER">
          <children>
-            <ImageView fx:id="tableImageView1" fitHeight="200.0" fitWidth="200.0" layoutX="30.0" pickOnBounds="true" preserveRatio="true">
+            <ImageView fx:id="deckButton" fitHeight="200.0" fitWidth="200.0" layoutX="30.0" pickOnBounds="true" preserveRatio="true">
                <image>
                   <Image url="@cards-uno/deck_of_cards.png" />
                </image>
@@ -25,7 +25,7 @@
    <right>
       <Pane prefHeight="200.0" prefWidth="200.0" BorderPane.alignment="CENTER">
          <children>
-            <ImageView fx:id="tableImageView2" fitHeight="100.0" fitWidth="200.0" layoutX="33.0" layoutY="50.0" pickOnBounds="true" preserveRatio="true">
+            <ImageView fx:id="unoButton" fitHeight="100.0" fitWidth="200.0" layoutX="33.0" layoutY="50.0" pickOnBounds="true" preserveRatio="true">
                <image>
                   <Image url="@images/button_uno.png" />
                </image>
@@ -57,7 +57,7 @@
                   <Insets left="80.0" />
                </HBox.margin>
             </GridPane>
-            <ImageView fx:id="tableImageView4" fitHeight="150.0" fitWidth="100.0" pickOnBounds="true" preserveRatio="true">
+            <ImageView fx:id="exitButton" fitHeight="150.0" fitWidth="100.0" pickOnBounds="true" preserveRatio="true">
                <image>
                   <Image url="@images/exit_button.png" />
                </image>
@@ -74,7 +74,7 @@
    <bottom>
       <HBox alignment="CENTER" prefHeight="150.0" prefWidth="700.0" spacing="10.0" BorderPane.alignment="CENTER">
          <children>
-            <ImageView fx:id="tableImageView3" fitHeight="150.0" fitWidth="100.0" pickOnBounds="true" preserveRatio="true">
+            <ImageView fx:id="backButton" fitHeight="150.0" fitWidth="100.0" onMouseClicked="#onHandleBack" pickOnBounds="true" preserveRatio="true">
                <image>
                   <Image url="@images/back_button.png" />
                </image>
@@ -90,7 +90,7 @@
                 <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
               </rowConstraints>
             </GridPane>
-            <ImageView fx:id="tableImageView31" fitHeight="150.0" fitWidth="100.0" layoutX="105.0" layoutY="47.0" pickOnBounds="true" preserveRatio="true">
+            <ImageView fx:id="nextButton" fitHeight="150.0" fitWidth="100.0" layoutX="105.0" layoutY="47.0" onMouseClicked="#onHandleNext" pickOnBounds="true" preserveRatio="true">
                <image>
                   <Image url="@images/next_button.png" />
                </image>
