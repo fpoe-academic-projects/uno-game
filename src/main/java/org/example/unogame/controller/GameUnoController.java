@@ -28,10 +28,10 @@ public class GameUnoController {
     private ImageView tableImageView;
 
     @FXML
-    private ImageView backButton;
+    private ImageView nextButton;
 
     @FXML
-    private ImageView nextButton;
+    private ImageView backButton;
 
     private Player humanPlayer;
     private Player machinePlayer;
@@ -90,7 +90,7 @@ public class GameUnoController {
                     gameUno.playCard(card);
                     tableImageView.setImage(card.getImage());
                     humanPlayer.removeCard(findPosCardsHumanPlayer(card));
-                    threadPlayMachine.setHasPlayerPlayed(true);
+                    threadPlayMachine.setPlayerTurn(false);
                     printCardsHumanPlayer();
                 }
             });

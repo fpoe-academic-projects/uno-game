@@ -11,7 +11,7 @@ public class ThreadPlayMachine extends Thread {
     private Table table;
     private Player machinePlayer;
     private ImageView tableImageView;
-    private volatile boolean hasPlayerPlayed;
+    private volatile boolean isPlayerTurn;
     private GameUnoController controller;
 
     public ThreadPlayMachine(Table table, Player machinePlayer, ImageView tableImageView, GameUnoController controller) {
@@ -19,12 +19,12 @@ public class ThreadPlayMachine extends Thread {
         this.machinePlayer = machinePlayer;
         this.tableImageView = tableImageView;
         this.controller = controller;
-        this.hasPlayerPlayed = false;
+        this.isPlayerTurn = true;
     }
 
     public void run() {
         while (true) {
-            if (hasPlayerPlayed) {
+            if (!isPlayerTurn) {
                 try {
                     Thread.sleep(2000); // espera 2 segundos para simular "pensar"
                 } catch (InterruptedException e) {
@@ -37,7 +37,8 @@ public class ThreadPlayMachine extends Thread {
                     controller.updateCardsMachinePlayer();  // llama al metodo en el controlador que actualiza las cartas de la maquina
                 });
 
-                hasPlayerPlayed = false;
+                isPlayerTurn = true;
+                setPlayerTurn(true);
             }
         }
     }
@@ -50,7 +51,11 @@ public class ThreadPlayMachine extends Thread {
         machinePlayer.removeCard(index); // quita la carta del mazo de la maquina luego de juagr la carta
     }
 
-    public void setHasPlayerPlayed(boolean hasPlayerPlayed) {
-        this.hasPlayerPlayed = hasPlayerPlayed;
+    public void setPlayerTurn(boolean hasPlayerPlayed) {
+        this.isPlayerTurn = hasPlayerPlayed;
+    }
+
+    public boolean isPlayerTurn() {
+        return isPlayerTurn;
     }
 }
