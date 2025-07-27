@@ -20,7 +20,7 @@ public class WelcomeStage extends Stage {
         }
         Scene scene = new Scene(root);
         // Configuring the stage
-        setTitle("Uno Game"); // Sets the title of the stage
+        setTitle("UNO - Bienvenido"); // Sets the title of the stage
         setScene(scene); // Sets the scene for the stage
         setResizable(false); // Disallows resizing of the stage
         show(); // Displays the stage

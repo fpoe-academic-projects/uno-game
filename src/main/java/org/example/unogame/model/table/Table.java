@@ -38,4 +38,18 @@ public class Table {
         }
         return this.cardsTable.get(this.cardsTable.size()-1);
     }
+
+    public String getColorOnTheTable() {
+        if (cardsTable.isEmpty()) {
+            throw new IndexOutOfBoundsException("There are no cards on the table.");
+        }
+        return this.cardsTable.get(this.cardsTable.size() - 1).getColor();
+    }
+
+    public void setColorOnTheTable(String color) {
+        if (cardsTable.isEmpty()) {
+            throw new IndexOutOfBoundsException("There are no cards on the table.");
+        }
+        this.cardsTable.get(this.cardsTable.size() - 1).setColor(color);
+    }
 }

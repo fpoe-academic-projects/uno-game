@@ -113,6 +113,7 @@ public class GameUno implements IGameUno {
         return cards;
     }
 
+    @Override
     public Card[] getCurrentVisibleCardsMachinePlayer(int posInitCardToShow) {
         int totalCards = this.machinePlayer.getCardsPlayer().size();
         int numVisibleCards = Math.min(4, totalCards - posInitCardToShow);
