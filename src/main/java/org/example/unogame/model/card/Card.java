@@ -37,8 +37,8 @@ public class Card {
     private ImageView createCardImageView() {
         ImageView card = new ImageView(this.image);
         card.setY(16);
-        card.setFitHeight(90);
-        card.setFitWidth(70);
+        card.setFitHeight(130);
+        card.setFitWidth(90);
         return card;
     }
 
@@ -49,8 +49,8 @@ public class Card {
         ).toString());
 
         ImageView cardBackView = new ImageView(backImage);
-        cardBackView.setFitWidth(70);
-        cardBackView.setFitHeight(90);
+        cardBackView.setFitWidth(90);
+        cardBackView.setFitHeight(130);
         cardBackView.setY(16);
         return cardBackView;
     }
@@ -71,14 +71,6 @@ public class Card {
      */
     public Image getImage() {
         return image;
-    }
-
-    public String getEnumName() {
-        if (cardEnum != null) {
-            return cardEnum.name();
-        } else {
-            return "";
-        }
     }
 
     public String getValue() {

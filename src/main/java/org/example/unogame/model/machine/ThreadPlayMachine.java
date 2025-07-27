@@ -23,20 +23,18 @@ public class ThreadPlayMachine extends Thread {
     }
 
     public void run() {
-        while (true){
-            if(hasPlayerPlayed){
-                try{
-                    Thread.sleep(2000);
+        while (true) {
+            if (hasPlayerPlayed) {
+                try {
+                    Thread.sleep(2000); // espera 2 segundos para simular "pensar"
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }
-                // Aqui iria la logica de colocar la carta
+
                 putCardOnTheTable();
 
-                /* basicamente lo que hacemos es actualizar el hilo de javafx para que se actualicen las cartas
-                de la maquina visualmente despues de que juegue la maquina*/
                 Platform.runLater(() -> {
-                    controller.updateCardsMachinePlayer(); // llama al metodo en el controlador que actualiza las cartas de la maquina
+                    controller.updateCardsMachinePlayer();  // llama al metodo en el controlador que actualiza las cartas de la maquina
                 });
 
                 hasPlayerPlayed = false;
