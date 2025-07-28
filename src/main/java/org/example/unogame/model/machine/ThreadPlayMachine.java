@@ -1,12 +1,13 @@
 package org.example.unogame.model.machine;
 
-import javafx.application.Platform;
-import javafx.scene.image.ImageView;
 import org.example.unogame.controller.GameUnoController;
 import org.example.unogame.model.card.Card;
 import org.example.unogame.model.deck.Deck;
 import org.example.unogame.model.player.Player;
 import org.example.unogame.model.table.Table;
+
+import javafx.application.Platform;
+import javafx.scene.image.ImageView;
 
 public class ThreadPlayMachine extends Thread {
     private Table table;
@@ -14,6 +15,7 @@ public class ThreadPlayMachine extends Thread {
     private ImageView tableImageView;
     private GameUnoController controller;
     private Deck deck;
+    private boolean running = true;
 
     public ThreadPlayMachine(Table table, Player machinePlayer, ImageView tableImageView, GameUnoController controller, Deck deck) {
         this.table = table;
@@ -24,7 +26,7 @@ public class ThreadPlayMachine extends Thread {
     }
 
     public void run() {
-        while (true) {
+        while (running) {
             if (!controller.isHumanTurn()) {
                 Platform.runLater(() -> {
                     controller.updateCardsMachinePlayer();
@@ -34,7 +36,6 @@ public class ThreadPlayMachine extends Thread {
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }
-
                 putCardOnTheTable();
                 controller.refreshGameView();
             }
@@ -92,6 +93,15 @@ public class ThreadPlayMachine extends Thread {
     public String getRandomColorFromHand() {
         String[] colors = {"RED", "BLUE", "YELLOW", "GREEN"};
         return colors[(int) (Math.random() * colors.length)];
+    }
+
+    /**
+     * Sets whether the thread is running.
+     *
+     * @param running true if the thread is running, false otherwise
+     */
+    public void setRunning(boolean running) {
+        this.running = running;
     }
 
 }

@@ -28,7 +28,7 @@
    <right>
       <Pane prefHeight="200.0" prefWidth="200.0" BorderPane.alignment="CENTER">
          <children>
-            <ImageView fx:id="unoButton" fitHeight="100.0" fitWidth="200.0" layoutX="33.0" layoutY="50.0" pickOnBounds="true" preserveRatio="true">
+            <ImageView fx:id="unoButton" fitHeight="100.0" fitWidth="200.0" layoutX="33.0" layoutY="50.0" onMouseClicked="#onHandleUno" pickOnBounds="true" preserveRatio="true">
                <image>
                   <Image url="@images/button_uno.png" />
                </image>

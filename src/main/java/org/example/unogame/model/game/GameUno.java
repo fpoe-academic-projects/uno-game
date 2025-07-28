@@ -103,7 +103,19 @@ public class GameUno implements IGameUno {
     @Override
     public Card[] getCurrentVisibleCardsHumanPlayer(int posInitCardToShow) {
         int totalCards = this.humanPlayer.getCardsPlayer().size();
+        
+        // Check if there are no cards or if posInitCardToShow is beyond available cards
+        if (totalCards == 0 || posInitCardToShow >= totalCards) {
+            return new Card[0];
+        }
+        
         int numVisibleCards = Math.min(4, totalCards - posInitCardToShow);
+        
+        // Ensure numVisibleCards is not negative
+        if (numVisibleCards <= 0) {
+            return new Card[0];
+        }
+        
         Card[] cards = new Card[numVisibleCards];
 
         for (int i = 0; i < numVisibleCards; i++) {
@@ -116,7 +128,19 @@ public class GameUno implements IGameUno {
     @Override
     public Card[] getCurrentVisibleCardsMachinePlayer(int posInitCardToShow) {
         int totalCards = this.machinePlayer.getCardsPlayer().size();
+        
+        // Check if there are no cards or if posInitCardToShow is beyond available cards
+        if (totalCards == 0 || posInitCardToShow >= totalCards) {
+            return new Card[0];
+        }
+        
         int numVisibleCards = Math.min(4, totalCards - posInitCardToShow);
+        
+        // Ensure numVisibleCards is not negative
+        if (numVisibleCards <= 0) {
+            return new Card[0];
+        }
+        
         Card[] cards = new Card[numVisibleCards];
 
         for (int i = 0; i < numVisibleCards; i++) {

@@ -1,9 +1,17 @@
 package org.example.unogame.controller;
 
+import org.example.unogame.model.card.Card;
+import org.example.unogame.model.deck.Deck;
+import org.example.unogame.model.game.GameUno;
+import org.example.unogame.model.machine.ThreadPlayMachine;
+import org.example.unogame.model.machine.ThreadSingUNOMachine;
+import org.example.unogame.model.machine.ThreadWinGame;
+import org.example.unogame.model.player.Player;
+import org.example.unogame.model.table.Table;
+
 import javafx.application.Platform;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
-import javafx.scene.Node;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.image.ImageView;
@@ -11,17 +19,6 @@ import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
-import org.example.unogame.model.card.Card;
-import org.example.unogame.model.deck.Deck;
-import org.example.unogame.model.game.GameUno;
-import org.example.unogame.model.machine.ThreadPlayMachine;
-import org.example.unogame.model.machine.ThreadSingUNOMachine;
-import org.example.unogame.model.player.Player;
-import org.example.unogame.model.table.Table;
-import org.example.unogame.model.unoenum.UnoEnum;
-import org.example.unogame.view.WelcomeStage;
-
-import java.io.IOException;
 
 /**
  * Controller class for the Uno game.
@@ -55,8 +52,19 @@ public class GameUnoController {
     private int posInitCardToShow;
     private volatile boolean isHumanTurn;
 
+    // UNO calling state variables
+    private boolean humanCanSayONE = true;
+    private boolean humanCanSayONEToMachine = true;
+    private boolean machineSayOne = false;
+    private boolean playHuman = true;
+
+    // Thread control variables
+    private boolean runningOneThread = true;
+    private boolean runningPlayMachineThread = true;
+
     private ThreadSingUNOMachine threadSingUNOMachine;
     private ThreadPlayMachine threadPlayMachine;
+    private ThreadWinGame threadWinGame;
 
     /**
      * Initializes the controller.
@@ -68,12 +76,26 @@ public class GameUnoController {
         tableImageView.setImage(this.table.getCurrentCardOnTheTable().getImage()); // mostrar visualmente a carta inciial en la mesa
         refreshGameView();
 
-        threadSingUNOMachine = new ThreadSingUNOMachine(this.humanPlayer.getCardsPlayer());
+        threadPlayMachine = new ThreadPlayMachine(this.table, this.machinePlayer, this.tableImageView, this, this.deck);
+        threadPlayMachine.start();
+
+        threadSingUNOMachine = new ThreadSingUNOMachine(
+            this.humanPlayer.getCardsPlayer(),
+            this.machinePlayer.getCardsPlayer(),
+            this,
+            this.threadPlayMachine
+        );
         Thread t = new Thread(threadSingUNOMachine, "ThreadSingUNO");
         t.start();
 
-        threadPlayMachine = new ThreadPlayMachine(this.table, this.machinePlayer, this.tableImageView, this, this.deck);
-        threadPlayMachine.start();
+        threadWinGame = new ThreadWinGame(
+            this.humanPlayer,
+            this.machinePlayer,
+            this.deck,
+            this
+        );
+        Thread winThread = new Thread(threadWinGame, "ThreadWinGame");
+        winThread.start();
     }
 
     /**
@@ -96,6 +118,11 @@ public class GameUnoController {
         this.gridPaneCardsPlayer.getChildren().clear();
         Card[] currentVisibleCardsHumanPlayer = this.gameUno.getCurrentVisibleCardsHumanPlayer(this.posInitCardToShow);
         updateTurnLabel();
+
+        // Add safety check for null or empty array
+        if (currentVisibleCardsHumanPlayer == null || currentVisibleCardsHumanPlayer.length == 0) {
+            return;
+        }
 
         for (int i = 0; i < currentVisibleCardsHumanPlayer.length; i++) {
             Card card = currentVisibleCardsHumanPlayer[i];
@@ -128,8 +155,13 @@ public class GameUnoController {
 
         Card[] currentVisibleCardsMachinePlayer = gameUno.getCurrentVisibleCardsMachinePlayer(posInitCardToShow);
 
+        // Add safety check for null or empty array
+        if (currentVisibleCardsMachinePlayer == null || currentVisibleCardsMachinePlayer.length == 0) {
+            return;
+        }
+
         for (int i = 0; i < currentVisibleCardsMachinePlayer.length; i++) {
-            ImageView backCard = Card.getBackCardImageView(); //
+            ImageView backCard = Card.getBackCardImageView();
             gridPaneCardsMachine.add(backCard, i, 0);
         }
     }
@@ -277,6 +309,131 @@ public class GameUnoController {
         return humanPlayer;
     }
 
+    /**
+     * Gets the machine player.
+     *
+     * @return the machine player
+     */
+    public Player getMachinePlayer(){
+        return machinePlayer;
+    }
+
+    /**
+     * Sets whether the human player can say UNO.
+     *
+     * @param humanCanSayONE true if the human player can say UNO, false otherwise
+     */
+    public void setHumanCanSayONE(boolean humanCanSayONE) {
+        this.humanCanSayONE = humanCanSayONE;
+    }
+
+    /**
+     * Sets whether the human player can say UNO to the machine.
+     *
+     * @param humanCanSayONEToMachine true if the human player can say UNO to the machine, false otherwise
+     */
+    public void setHumanCanSayONEToMachine(boolean humanCanSayONEToMachine) {
+        this.humanCanSayONEToMachine = humanCanSayONEToMachine;
+    }
+
+    /**
+     * Sets whether the machine has said UNO.
+     *
+     * @param machineSayOne true if the machine has said UNO, false otherwise
+     */
+    public void setMachineSayOne(boolean machineSayOne) {
+        this.machineSayOne = machineSayOne;
+    }
+
+    /**
+     * Sets whether the human player can play.
+     *
+     * @param playHuman true if the human player can play, false otherwise
+     */
+    public void setPlayHuman(boolean playHuman) {
+        this.playHuman = playHuman;
+    }
+
+    /**
+     * Sets the turn label text.
+     *
+     * @param text the text to display in the turn label
+     */
+    public void setTurnLabel(String text) {
+        Platform.runLater(() -> {
+            this.turnLabel.setText(text);
+        });
+    }
+
+    /**
+     * Gets whether the human player can say UNO.
+     *
+     * @return true if the human player can say UNO, false otherwise
+     */
+    public boolean isHumanCanSayONE() {
+        return humanCanSayONE;
+    }
+
+    /**
+     * Gets whether the human player can say UNO to the machine.
+     *
+     * @return true if the human player can say UNO to the machine, false otherwise
+     */
+    public boolean isHumanCanSayONEToMachine() {
+        return humanCanSayONEToMachine;
+    }
+
+    /**
+     * Gets whether the machine has said UNO.
+     *
+     * @return true if the machine has said UNO, false otherwise
+     */
+    public boolean isMachineSayOne() {
+        return machineSayOne;
+    }
+
+    /**
+     * Gets whether the human player can play.
+     *
+     * @return true if the human player can play, false otherwise
+     */
+    public boolean isPlayHuman() {
+        return playHuman;
+    }
+
+    /**
+     * Sets whether the UNO thread is running.
+     *
+     * @param runningOneThread true if the UNO thread is running, false otherwise
+     */
+    public void setRunningOneThread(boolean runningOneThread) {
+        this.runningOneThread = runningOneThread;
+        if (threadSingUNOMachine != null) {
+            threadSingUNOMachine.setRunning(runningOneThread);
+        }
+    }
+
+    /**
+     * Sets whether the play machine thread is running.
+     *
+     * @param runningPlayMachineThread true if the play machine thread is running, false otherwise
+     */
+    public void setRunningPlayMachineThread(boolean runningPlayMachineThread) {
+        this.runningPlayMachineThread = runningPlayMachineThread;
+        if (threadPlayMachine != null) {
+            threadPlayMachine.setRunning(runningPlayMachineThread);
+        }
+    }
+
+    /**
+     * Gets whether the UNO thread is running.
+     *
+     * @return true if the UNO thread is running, false otherwise
+     */
+    public boolean isRunningOneThread() {
+        return runningOneThread;
+    }
+
     private void updateTurnLabel() {
         String turn = isHumanTurn ? "humano" : "máquina";
         String color = table.getColorOnTheTable();
@@ -377,10 +534,20 @@ public class GameUnoController {
     /**
      * Handles the action of saying "Uno".
      *
-     * @param event the action event
+     * @param event the mouse event
      */
     @FXML
-    void onHandleUno(ActionEvent event) {
-        // Implement logic to handle Uno event here
+    void onHandleUno(MouseEvent event) {
+        if (humanPlayer.getCardsPlayer().size() == 1 && humanCanSayONE) {
+            setTurnLabel("¡UNO!");
+            setHumanCanSayONE(false);
+            setMachineSayOne(false);
+        } else if (machinePlayer.getCardsPlayer().size() == 1 && humanCanSayONEToMachine) {
+            setTurnLabel("¡UNO!");
+            setHumanCanSayONEToMachine(false);
+            setMachineSayOne(false);
+        } else {
+            setTurnLabel("Cannot say UNO at this time");
+        }
     }
 }
