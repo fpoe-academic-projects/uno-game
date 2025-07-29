@@ -1,7 +1,8 @@
 package org.example.unogame.model.card;
 
 import javafx.scene.image.Image;
-import javafx.scene.image.ImageView;
+import javafx.scene.paint.ImagePattern;
+import javafx.scene.shape.Rectangle;
 import org.example.unogame.model.unoenum.UnoEnum;
 
 /**
@@ -12,8 +13,7 @@ public class Card {
     private String value;
     private String color;
     private Image image;
-    private ImageView cardImageView;
-    private UnoEnum cardEnum;
+    private Rectangle cardRectangle;
 
     /**
      * Constructs a Card with the specified image URL and name.
@@ -26,7 +26,14 @@ public class Card {
         this.value = value;
         this.color = color;
         this.image = new Image(String.valueOf(getClass().getResource(url)));
-        this.cardImageView = createCardImageView();
+        this.cardRectangle = createCardRectangle();
+    }
+
+    // Constructor for testing
+    public Card(String value, String color) {
+        this.image = null;
+        this.value = value;
+        this.color = color;
     }
 
     /**
@@ -34,25 +41,25 @@ public class Card {
      *
      * @return the configured ImageView of the card
      */
-    private ImageView createCardImageView() {
-        ImageView card = new ImageView(this.image);
-        card.setY(16);
-        card.setFitHeight(130);
-        card.setFitWidth(90);
+    private Rectangle createCardRectangle() {
+        Rectangle card = new Rectangle(90, 130);
+        card.setFill(new ImagePattern(this.image));
+        card.setArcWidth(10); // Bordes redondeados
+        card.setArcHeight(10);
         return card;
     }
 
     // este metodo se usa para que la maquina obtenga la imagen de la parte de atras de la carta del uno
-    public static ImageView getBackCardImageView() {
+    public static Rectangle getBackCardRectangle() {
         Image backImage = new Image(Card.class.getResource(
-                org.example.unogame.model.unoenum.UnoEnum.CARD_UNO.getFilePath()
+                UnoEnum.CARD_UNO.getFilePath()
         ).toString());
 
-        ImageView cardBackView = new ImageView(backImage);
-        cardBackView.setFitWidth(90);
-        cardBackView.setFitHeight(130);
-        cardBackView.setY(16);
-        return cardBackView;
+        Rectangle cardBack = new Rectangle(90, 130);
+        cardBack.setFill(new ImagePattern(backImage));
+        cardBack.setArcWidth(10);
+        cardBack.setArcHeight(10);
+        return cardBack;
     }
 
     /**
@@ -60,8 +67,8 @@ public class Card {
      *
      * @return the ImageView of the card
      */
-    public ImageView getCard() {
-        return cardImageView;
+    public Rectangle getCard() {
+        return cardRectangle;
     }
 
     /**
