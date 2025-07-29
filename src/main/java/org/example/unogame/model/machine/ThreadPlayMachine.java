@@ -48,7 +48,9 @@ public class ThreadPlayMachine extends Thread {
 
             if (controller.canPlayCard(card, table)) {
                 table.addCardOnTheTable(card);
-                tableImageView.setImage(card.getImage());
+                Platform.runLater(() -> {
+                    tableImageView.setImage(card.getImage());
+                });
                 machinePlayer.removeCard(i);
                 cardPlayed = true;
 

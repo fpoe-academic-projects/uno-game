@@ -26,6 +26,9 @@ import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 import org.example.unogame.model.unoenum.UnoEnum;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * Controller class for the Uno game.
  */
@@ -135,6 +138,7 @@ public class GameUnoController {
         for (int i = 0; i < currentVisibleCardsHumanPlayer.length; i++) {
             Card card = currentVisibleCardsHumanPlayer[i];
             Rectangle cardRectangle = card.getCard();
+            applyHoverEffectCards(cardRectangle);
 
             cardRectangle.setOnMouseClicked((MouseEvent event) -> {
                 if (!isHumanTurn) return; // solo si es su turno
@@ -159,18 +163,34 @@ public class GameUnoController {
     }
 
     private void printCardsMachinePlayer() {
-        gridPaneCardsMachine.getChildren().clear();
+        this.gridPaneCardsMachine.getChildren().clear();
 
-        Card[] currentVisibleCardsMachinePlayer = gameUno.getCurrentVisibleCardsMachinePlayer(posInitCardToShow);
+        List<Card> safeCopy;
+        synchronized (machinePlayer) {
+            safeCopy = new ArrayList<>(machinePlayer.getCardsPlayer());
+        }
 
         // Add safety check for null or empty array
-        if (currentVisibleCardsMachinePlayer == null || currentVisibleCardsMachinePlayer.length == 0) {
+        if (safeCopy == null || safeCopy.size() == 0) {
             return;
         }
 
-        for (int i = 0; i < currentVisibleCardsMachinePlayer.length; i++) {
+        int maxVisibleCards = 4;
+        int cardsToShow = Math.min(safeCopy.size(), maxVisibleCards);
+
+        // Show 4 cards
+        for (int i = 0; i < cardsToShow; i++) {
             Rectangle backCard = Card.getBackCardRectangle();
-            gridPaneCardsMachine.add(backCard, i, 0);
+            applyHoverEffectCards(backCard);
+            this.gridPaneCardsMachine.add(backCard, i, 0);
+        }
+
+        // If there are more than 4 cards, show a +N label on top of the last visible card
+        if (safeCopy.size() > maxVisibleCards) {
+            int remaining = safeCopy.size() - maxVisibleCards;
+            Label plusLabel = new Label("+" + remaining);
+            plusLabel.setStyle("-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: white; -fx-background-color: rgba(0,0,0,0.8); -fx-padding: 5px;");
+            this.gridPaneCardsMachine.add(plusLabel, maxVisibleCards - 1, 0);
         }
     }
 
@@ -246,7 +266,6 @@ public class GameUnoController {
             case "+2":
                 for (int i = 0; i < 2; i++) {
                     otherPlayer.addCard(deck.takeCard()); // pone a comer al jugador contrario
-                    System.out.println(otherPlayer.equals(humanPlayer) + " comió");
                 }
                 // quien juega +2 repite turno
                 setHumanTurn(currentPlayer.equals(humanPlayer));
@@ -256,7 +275,6 @@ public class GameUnoController {
             case "+4":
                 for (int i = 0; i < 4; i++) {
                     otherPlayer.addCard(deck.takeCard());
-                    System.out.println(otherPlayer.equals(humanPlayer) + " comió");
                 }
                 if (currentPlayer.equals(humanPlayer)) {
                     setHumanTurn(currentPlayer.equals(humanPlayer));
@@ -474,6 +492,19 @@ public class GameUnoController {
 
         button.setOnMouseEntered(e -> shrink.playFromStart());
         button.setOnMouseExited(e -> grow.playFromStart());
+    }
+
+    private void applyHoverEffectCards(Rectangle card) {
+        ScaleTransition shrink = new ScaleTransition(Duration.millis(150), card);
+        shrink.setToX(0.9);
+        shrink.setToY(0.9);
+
+        ScaleTransition grow = new ScaleTransition(Duration.millis(150), card);
+        grow.setToX(1.0);
+        grow.setToY(1.0);
+
+        card.setOnMouseEntered(e -> shrink.playFromStart());
+        card.setOnMouseExited(e -> grow.playFromStart());
     }
 
     private void updateGridPaneMargin(){
