@@ -54,6 +54,16 @@ public class ThreadPlayMachine extends Thread {
                 machinePlayer.removeCard(i);
                 cardPlayed = true;
 
+                // Check if machine just played their last card
+                if (machinePlayer.getCardsPlayer().size() == 0) {
+                    // Machine player won - this will be handled by ThreadWinGame
+                } else if (machinePlayer.getCardsPlayer().size() == 1) {
+                    // Machine has 1 card left - enable human to call UNO
+                    Platform.runLater(() -> {
+                        controller.setHumanCanSayONEToMachine(true);
+                    });
+                }
+
                 if (controller.isSpecial(card.getValue())) {
                     controller.specialCard(card, machinePlayer, controller.getHumanPlayer());
                 } else {
@@ -67,6 +77,13 @@ public class ThreadPlayMachine extends Thread {
 
         if (!cardPlayed) {
             // Si no puede jugar ninguna carta, roba una
+            // Verificar si hay cartas en el mazo antes de intentar tomar una
+            if (deck.isEmpty()) {
+                System.out.println("No hay más cartas en el mazo para que la máquina robe");
+                controller.setHumanTurn(true);
+                return;
+            }
+            
             Card drawnCard = deck.takeCard();
             machinePlayer.addCard(drawnCard);
             System.out.println("La maquina comio");

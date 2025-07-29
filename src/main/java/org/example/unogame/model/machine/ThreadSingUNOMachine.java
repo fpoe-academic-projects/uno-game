@@ -40,17 +40,10 @@ public class ThreadSingUNOMachine implements Runnable {
     public void run() {
         while (running) {
             try {
-                Thread.sleep((long) (Math.random() * 5000));
+                Thread.sleep((long) (Math.random() * 2000 + 2000)); // 2-4 segundos
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
-            
-            // Check if the thread should continue running
-            if (!gameUnoController.isRunningOneThread()) {
-                running = false;
-                break;
-            }
-            
             hasOneCardTheHumanPlayer();
 
             synchronized (this) {
@@ -63,28 +56,51 @@ public class ThreadSingUNOMachine implements Runnable {
      * Checks if the human player or the machine has one card and updates the game state accordingly.
      */
     private void hasOneCardTheHumanPlayer() {
-        // Get current card counts from the controller to ensure we have the latest state
+        // Obtener el conteo actual de cartas del controlador para asegurar que tenemos el estado más reciente
         int humanCardsCount = gameUnoController.getHumanPlayer().getCardsPlayer().size();
         int machineCardsCount = gameUnoController.getMachinePlayer().getCardsPlayer().size();
         
-        // Don't call UNO if either player has 0 cards (game should be ending)
+        System.out.println("Jugador=" + humanCardsCount + ", Maquina=" + machineCardsCount);
+        
+        // No llamar UNO si alguno de los jugadores tiene 0 cartas (el juego debería estar terminando)
         if (humanCardsCount == 0 || machineCardsCount == 0) {
-            // Stop the thread immediately if game is ending
+            // Detener el hilo
             running = false;
             return;
         }
         
         if (humanCardsCount == 1 && machineCanSayOneToPlayer) {
-            // Machine calls UNO on the human player
-            gameUnoController.setTurnLabel("¡UNO!");
-            gameUnoController.setHumanCanSayONE(false);
-            gameUnoController.setPlayHuman(false);
-            gameUnoController.setMachineSayOne(true);
+            System.out.println("Maquina detecta una sola carta del jugador");
+            // Check if human still has 1 card and hasn't called UNO
+            humanCardsCount = gameUnoController.getHumanPlayer().getCardsPlayer().size();
+            if (humanCardsCount == 1 && gameUnoController.isHumanCanSayONE()) {
+                System.out.println("Maquina llamando UNO al jugador!");
+                // Machine calls UNO on the human player
+                gameUnoController.setTurnLabel("La máquina cantó UNO al jugador");
+                gameUnoController.setHumanCanSayONE(false);
+                gameUnoController.setPlayHuman(false);
+                gameUnoController.setMachineSayOne(true);
+                
+                // Esperar 2 segundos para que el mensaje de UNO sea visible
+                try {
+                    Thread.sleep(2000);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+                
+                // aplicar penalización de UNO al jugador
+                gameUnoController.applyUnoPenalty(gameUnoController.getHumanPlayer());
+            } else {
+                System.out.println("El jugador ya cantó UNO o ya no tiene una carta");
+            }
             
         } else if (machineCardsCount == 1 && machineCanSayOne) {
-            // Machine calls UNO for defense
-            gameUnoController.setTurnLabel("¡UNO!");
+            //System.out.println("Maquina canta UNO para defensa!");
+            // Maquina canta UNO para defenderse
+            gameUnoController.setTurnLabel("La máquina cantó UNO para defenderse");
             gameUnoController.setHumanCanSayONEToMachine(false);
+        } else if (machineCardsCount == 1 && !machineCanSayOne) {
+            //System.out.println("ThreadSingUNO - Machine has 1 card but machineCanSayOne is false!");
         }
     }
 
@@ -114,7 +130,6 @@ public class ThreadSingUNOMachine implements Runnable {
     public void setRunning(boolean running) {
         this.running = running;
         if (!running) {
-            // Notify any waiting threads to wake up and check the running flag
             synchronized (this) {
                 notifyAll();
             }

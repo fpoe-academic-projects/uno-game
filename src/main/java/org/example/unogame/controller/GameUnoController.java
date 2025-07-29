@@ -1,3 +1,4 @@
+
 package org.example.unogame.controller;
 
 import org.example.unogame.model.card.Card;
@@ -136,6 +137,15 @@ public class GameUnoController {
                     tableImageView.setImage(card.getImage());
                     humanPlayer.removeCard(findPosCardsHumanPlayer(card));
 
+                    // Check if human player just played their last card
+                    if (humanPlayer.getCardsPlayer().size() == 0) {
+                        // Human player won - this will be handled by ThreadWinGame
+                    } else if (humanPlayer.getCardsPlayer().size() == 1) {
+                        // Human player has 1 card left - enable UNO calling
+                        setHumanCanSayONE(true);
+                        setMachineCanSayOneToPlayer(true);
+                    }
+
                     if (isSpecial(card.getValue())) { // verifica si es una carta especial
                         specialCard(card, humanPlayer, machinePlayer);
                     } else {
@@ -236,9 +246,22 @@ public class GameUnoController {
                 break;
 
             case "+2":
+                // Verificar si hay suficientes cartas en el mazo antes de aplicar +2
+                if (deck.isEmpty()) {
+                    System.out.println("No hay suficientes cartas en el mazo para aplicar +2");
+                    setHumanTurn(!currentPlayer.equals(humanPlayer));
+                    deckButton.setDisable(!isHumanTurn);
+                    return;
+                }
+                
                 for (int i = 0; i < 2; i++) {
-                    otherPlayer.addCard(deck.takeCard()); // pone a comer al jugador contrario
-                    System.out.println(otherPlayer.equals(humanPlayer) + " comió");
+                    if (!deck.isEmpty()) {
+                        otherPlayer.addCard(deck.takeCard()); // pone a comer al jugador contrario
+                        System.out.println(otherPlayer.equals(humanPlayer) + " comió");
+                    } else {
+                        System.out.println("No hay más cartas en el mazo para completar +2");
+                        break;
+                    }
                 }
                 // quien juega +2 repite turno
                 setHumanTurn(currentPlayer.equals(humanPlayer));
@@ -246,16 +269,31 @@ public class GameUnoController {
                 break;
 
             case "+4":
+                // Verificar si hay suficientes cartas en el mazo antes de aplicar +4
+                if (deck.isEmpty()) {
+                    System.out.println("No hay suficientes cartas en el mazo para aplicar +4");
+                    setHumanTurn(!currentPlayer.equals(humanPlayer));
+                    deckButton.setDisable(!isHumanTurn);
+                    return;
+                }
+                
                 for (int i = 0; i < 4; i++) {
-                    otherPlayer.addCard(deck.takeCard());
-                    System.out.println(otherPlayer.equals(humanPlayer) + " comió");
+                    if (!deck.isEmpty()) {
+                        otherPlayer.addCard(deck.takeCard());
+                        System.out.println(otherPlayer.equals(humanPlayer) + " comió");
+                    } else {
+                        System.out.println("No hay más cartas en el mazo para completar +4");
+                        break;
+                    }
                 }
                 if (currentPlayer.equals(humanPlayer)) {
-                    setHumanTurn(currentPlayer.equals(humanPlayer));
-                    deckButton.setDisable(!isHumanTurn);
+                    this.card = card;
+                    showColorPicker(); // usuario elige color de la carta +4
+                    deckButton.setDisable(true);
                 } else {
                     String randomColor = threadPlayMachine.getRandomColorFromHand(); // si es maquina, escoge un color al azar del mazo y lo pone
                     table.setColorOnTheTable(randomColor);
+                    currentCard.setColor(randomColor);
                     // quien juega +4 repite turno
                     setHumanTurn(currentPlayer.equals(humanPlayer));
                     deckButton.setDisable(!isHumanTurn);
@@ -434,6 +472,34 @@ public class GameUnoController {
         return runningOneThread;
     }
 
+    /**
+     * Applies the UNO penalty by making the player draw 1 card.
+     *
+     * @param player the player who must draw a card
+     */
+    public void applyUnoPenalty(Player player) {
+        Platform.runLater(() -> {
+            // Verificar si hay cartas en el mazo antes de aplicar la penalización
+            if (deck.isEmpty()) {
+                System.out.println("No hay cartas en el mazo para aplicar penalización de UNO");
+                setTurnLabel("No hay cartas en el mazo para aplicar penalización");
+                refreshGameView();
+                return;
+            }
+            
+            Card penaltyCard = deck.takeCard();
+            player.addCard(penaltyCard);
+            
+            if (player.equals(humanPlayer)) {
+                setTurnLabel("El jugador robó 1 carta por no cantar UNO");
+            } else {
+                setTurnLabel("La máquina robó 1 carta por no cantar UNO");
+            }
+            
+            refreshGameView();
+        });
+    }
+
     private void updateTurnLabel() {
         String turn = isHumanTurn ? "humano" : "máquina";
         String color = table.getColorOnTheTable();
@@ -447,6 +513,16 @@ public class GameUnoController {
             printCardsHumanPlayer();
             updateCardsMachinePlayer();
             updateTurnLabel();
+            
+            // Check if machine has 1 card and enable human to call UNO
+            if (machinePlayer.getCardsPlayer().size() == 1 && !machineSayOne) {
+                setHumanCanSayONEToMachine(true);
+            }
+            
+            // Check if human has 1 card and enable machine to call UNO
+            if (humanPlayer.getCardsPlayer().size() == 1 && !machineSayOne) {
+                setMachineCanSayOneToPlayer(true);
+            }
         });
     }
 
@@ -506,6 +582,14 @@ public class GameUnoController {
         if (!isHumanTurn) return; // solo si es turno humano
         if (deckButton.isDisable()) return; // ya comio
 
+        // Verificar si hay cartas en el mazo antes de intentar tomar una
+        if (deck.isEmpty()) {
+            System.out.println("No hay más cartas en el mazo para robar");
+            setTurnLabel("No hay más cartas en el mazo");
+            refreshGameView();
+            return;
+        }
+
         Card drawCard = deck.takeCard();
         humanPlayer.addCard(drawCard);
         printCardsHumanPlayer();
@@ -539,15 +623,29 @@ public class GameUnoController {
     @FXML
     void onHandleUno(MouseEvent event) {
         if (humanPlayer.getCardsPlayer().size() == 1 && humanCanSayONE) {
-            setTurnLabel("¡UNO!");
+            setTurnLabel("El jugador cantó UNO para defenderse");
             setHumanCanSayONE(false);
             setMachineSayOne(false);
         } else if (machinePlayer.getCardsPlayer().size() == 1 && humanCanSayONEToMachine) {
-            setTurnLabel("¡UNO!");
+            setTurnLabel("El jugador cantó UNO a la máquina");
             setHumanCanSayONEToMachine(false);
             setMachineSayOne(false);
+            
+            // Apply penalty: machine must draw 1 card
+            applyUnoPenalty(machinePlayer);
         } else {
-            setTurnLabel("Cannot say UNO at this time");
+            setTurnLabel("No se puede cantar UNO en este momento");
+        }
+    }
+
+    /**
+     * Sets whether the machine can call UNO to the player.
+     *
+     * @param machineCanSayOneToPlayer true if the machine can call UNO to the player, false otherwise
+     */
+    public void setMachineCanSayOneToPlayer(boolean machineCanSayOneToPlayer) {
+        if (threadSingUNOMachine != null) {
+            threadSingUNOMachine.setMachineCanSayOneToPlayer(machineCanSayOneToPlayer);
         }
     }
 }
