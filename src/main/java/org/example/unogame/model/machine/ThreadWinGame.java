@@ -44,7 +44,7 @@ public class ThreadWinGame implements Runnable {
     public void run() {
         while (running) {
             try {
-                Thread.sleep((long) (Math.random() * 1000));
+                Thread.sleep((long) (Math.random() * 1000)); // pausa
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
@@ -60,7 +60,7 @@ public class ThreadWinGame implements Runnable {
         int numsCardsHuman = humanPlayer.getCardsPlayer().size();
         
         if (numsCardsHuman == 0) {
-            // Stop all threads immediately
+            // Detener todos los hilos inmediatamente
             gameUnoController.setRunningOneThread(false);
             gameUnoController.setRunningPlayMachineThread(false);
             stopThread();
@@ -72,7 +72,7 @@ public class ThreadWinGame implements Runnable {
             });
             
         } else if (numsCardsMachine == 0) {
-            // Stop all threads immediately
+            // Detener todos los hilos inmediatamente
             gameUnoController.setRunningOneThread(false);
             gameUnoController.setRunningPlayMachineThread(false);
             stopThread();
@@ -84,7 +84,7 @@ public class ThreadWinGame implements Runnable {
             });
             
         } else if (deckOfCards.isEmpty()) {
-            // Stop all threads immediately
+            // Detener todos los hilos inmediatamente
             gameUnoController.setRunningOneThread(false);
             gameUnoController.setRunningPlayMachineThread(false);
             stopThread();
@@ -130,11 +130,12 @@ public class ThreadWinGame implements Runnable {
      * @param value the card value as String
      * @return the card value as int
      */
+    // puntajes
     private int convertCardValueToInt(String value) {
         try {
             return Integer.parseInt(value);
         } catch (NumberFormatException e) {
-            // Handle non-integer values (special cards)
+            // Manejar valores no enteros (cartas especiales)
             switch (value) {
                 case "SKIP":
                 case "RESERVE":
@@ -146,7 +147,7 @@ public class ThreadWinGame implements Runnable {
                 case "+4":
                     return 50;
                 default:
-                    return 10; // Default value if conversion fails
+                    return 10; // Valor por defecto para cartas desconocidas
             }
         }
     }

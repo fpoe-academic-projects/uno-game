@@ -44,6 +44,9 @@ public class GameUnoController {
     @FXML
     public Label turnLabel;
 
+    @FXML
+    private ImageView unoButton;
+
     private Player humanPlayer;
     private Player machinePlayer;
     private Deck deck;
@@ -53,11 +56,17 @@ public class GameUnoController {
     private int posInitCardToShow;
     private volatile boolean isHumanTurn;
 
-    // UNO calling state variables
+    // UNO llamado
     private boolean humanCanSayONE = true;
     private boolean humanCanSayONEToMachine = true;
     private boolean machineSayOne = false;
     private boolean playHuman = true;
+    
+    // UNO tiempso
+    private boolean unoTimerActive = false;
+    private long unoTimerStartTime = 0;
+    private static final long UNO_TIMEOUT_MIN_MS = 2000; // 2 segundos mínimo
+    private static final long UNO_TIMEOUT_MAX_MS = 4000; // 4 segundos máximo
 
     // Thread control variables
     private boolean runningOneThread = true;
@@ -75,6 +84,11 @@ public class GameUnoController {
         initVariables();
         this.gameUno.startGame();
         tableImageView.setImage(this.table.getCurrentCardOnTheTable().getImage()); // mostrar visualmente a carta inciial en la mesa
+        
+        // Ocultar botón UNO inicialmente
+        unoButton.setVisible(false);
+        unoButton.setDisable(true);
+        
         refreshGameView();
 
         threadPlayMachine = new ThreadPlayMachine(this.table, this.machinePlayer, this.tableImageView, this, this.deck);
@@ -120,7 +134,7 @@ public class GameUnoController {
         Card[] currentVisibleCardsHumanPlayer = this.gameUno.getCurrentVisibleCardsHumanPlayer(this.posInitCardToShow);
         updateTurnLabel();
 
-        // Add safety check for null or empty array
+        // Agregar verificación de seguridad para array nulo o vacío
         if (currentVisibleCardsHumanPlayer == null || currentVisibleCardsHumanPlayer.length == 0) {
             return;
         }
@@ -137,14 +151,17 @@ public class GameUnoController {
                     tableImageView.setImage(card.getImage());
                     humanPlayer.removeCard(findPosCardsHumanPlayer(card));
 
-                    // Check if human player just played their last card
+                    // Verificar si el jugador humano acaba de jugar su última carta
                     if (humanPlayer.getCardsPlayer().size() == 0) {
-                        // Human player won - this will be handled by ThreadWinGame
+                        // El jugador humano ganó - esto será manejado por ThreadWinGame
                     } else if (humanPlayer.getCardsPlayer().size() == 1) {
-                        // Human player has 1 card left - enable UNO calling
+                        // El jugador humano tiene 1 carta restante - iniciar temporizador
                         setHumanCanSayONE(true);
-                        setMachineCanSayOneToPlayer(true);
+                        startUnoTimer();
                     }
+                    
+                    // Mostrar conteo de cartas después de jugar
+                    System.out.println("DESPUÉS DE JUGAR - Jugador: " + humanPlayer.getCardsPlayer().size() + " | Máquina: " + machinePlayer.getCardsPlayer().size());
 
                     if (isSpecial(card.getValue())) { // verifica si es una carta especial
                         specialCard(card, humanPlayer, machinePlayer);
@@ -165,7 +182,7 @@ public class GameUnoController {
 
         Card[] currentVisibleCardsMachinePlayer = gameUno.getCurrentVisibleCardsMachinePlayer(posInitCardToShow);
 
-        // Add safety check for null or empty array
+        // Agregar verificación de seguridad para array nulo o vacío
         if (currentVisibleCardsMachinePlayer == null || currentVisibleCardsMachinePlayer.length == 0) {
             return;
         }
@@ -257,7 +274,6 @@ public class GameUnoController {
                 for (int i = 0; i < 2; i++) {
                     if (!deck.isEmpty()) {
                         otherPlayer.addCard(deck.takeCard()); // pone a comer al jugador contrario
-                        System.out.println(otherPlayer.equals(humanPlayer) + " comió");
                     } else {
                         System.out.println("No hay más cartas en el mazo para completar +2");
                         break;
@@ -280,7 +296,6 @@ public class GameUnoController {
                 for (int i = 0; i < 4; i++) {
                     if (!deck.isEmpty()) {
                         otherPlayer.addCard(deck.takeCard());
-                        System.out.println(otherPlayer.equals(humanPlayer) + " comió");
                     } else {
                         System.out.println("No hay más cartas en el mazo para completar +4");
                         break;
@@ -510,18 +525,25 @@ public class GameUnoController {
 
     public void refreshGameView() {
         Platform.runLater(() -> {
+            // Mostrar conteo de cartas de ambos jugadores
+            System.out.println("CARTAS - Jugador: " + humanPlayer.getCardsPlayer().size() + " | Máquina: " + machinePlayer.getCardsPlayer().size());
             printCardsHumanPlayer();
             updateCardsMachinePlayer();
             updateTurnLabel();
+            resetUnoState(); // Restablecer estado UNO basado en el conteo actual de cartas
             
-            // Check if machine has 1 card and enable human to call UNO
+            // Verificar si la máquina tiene 1 carta y habilitar al jugador para cantar UNO
             if (machinePlayer.getCardsPlayer().size() == 1 && !machineSayOne) {
                 setHumanCanSayONEToMachine(true);
-            }
-            
-            // Check if human has 1 card and enable machine to call UNO
-            if (humanPlayer.getCardsPlayer().size() == 1 && !machineSayOne) {
-                setMachineCanSayOneToPlayer(true);
+                // Mostrar botón UNO para que el jugador cante UNO a la máquina
+                unoButton.setVisible(true);
+                unoButton.setDisable(false);
+            } else if (humanPlayer.getCardsPlayer().size() == 1 && humanCanSayONE && unoTimerActive) {
+                // El jugador tiene 1 carta y el temporizador está activo - el botón debe ser visible desde startUnoTimer
+            } else {
+                // Ocultar botón UNO en todos los demás casos
+                unoButton.setVisible(false);
+                unoButton.setDisable(true);
             }
         });
     }
@@ -584,7 +606,7 @@ public class GameUnoController {
 
         // Verificar si hay cartas en el mazo antes de intentar tomar una
         if (deck.isEmpty()) {
-            System.out.println("No hay más cartas en el mazo para robar");
+            System.out.println("No hay más cartas en el mazo para tomar");
             setTurnLabel("No hay más cartas en el mazo");
             refreshGameView();
             return;
@@ -597,11 +619,11 @@ public class GameUnoController {
         deckButton.setDisable(true); // solo puede robar 1 carta por turno
 
         if (canPlayCard(drawCard, table)) {
-            System.out.println("¡Puedes jugar la carta que acabas de robar! Haz click para jugarla.");
+            System.out.println("¡Puedes jugar la carta que acabas de tomar! Haz click para jugarla.");
         } else {
             // no puede jugar carta comida, pasa turno a maquina
             setHumanTurn(false);
-            System.out.println("No puedes jugar la carta robada. Turno de máquina.");
+            System.out.println("No puedes jugar la carta tomada. Turno de máquina.");
         }
 
         refreshGameView();
@@ -622,17 +644,22 @@ public class GameUnoController {
      */
     @FXML
     void onHandleUno(MouseEvent event) {
-        if (humanPlayer.getCardsPlayer().size() == 1 && humanCanSayONE) {
-            setTurnLabel("El jugador cantó UNO para defenderse");
+        // Jugador humano cantando UNO para defenderse (cuando tiene 1 carta)
+        if (humanPlayer.getCardsPlayer().size() == 1 && humanCanSayONE && unoTimerActive) {
+            setTurnLabel("¡El jugador cantó UNO a tiempo!");
             setHumanCanSayONE(false);
             setMachineSayOne(false);
+            stopUnoTimer(); // Detener el temporizador ya que el jugador cantó UNO exitosamente
+            
         } else if (machinePlayer.getCardsPlayer().size() == 1 && humanCanSayONEToMachine) {
-            setTurnLabel("El jugador cantó UNO a la máquina");
+            // Jugador humano cantando UNO a la máquina (cuando la máquina tiene 1 carta)
+            setTurnLabel("¡El jugador cantó UNO a la máquina!");
             setHumanCanSayONEToMachine(false);
             setMachineSayOne(false);
             
-            // Apply penalty: machine must draw 1 card
+            // Aplicar penalización: la máquina debe tomar 1 carta
             applyUnoPenalty(machinePlayer);
+            
         } else {
             setTurnLabel("No se puede cantar UNO en este momento");
         }
@@ -646,6 +673,87 @@ public class GameUnoController {
     public void setMachineCanSayOneToPlayer(boolean machineCanSayOneToPlayer) {
         if (threadSingUNOMachine != null) {
             threadSingUNOMachine.setMachineCanSayOneToPlayer(machineCanSayOneToPlayer);
+        }
+    }
+
+    /**
+     * Shows the UNO button when the machine has 1 card.
+     */
+    public void showUnoButtonForMachine() {
+        Platform.runLater(() -> {
+            unoButton.setVisible(true);
+            unoButton.setDisable(false);
+        });
+    }
+
+    /**
+     * Starts the UNO timer for the human player.
+     * This gives the human player 2-4 seconds to declare UNO.
+     */
+    public void startUnoTimer() {
+        unoTimerActive = true;
+        unoTimerStartTime = System.currentTimeMillis();
+        
+        // Generar tiempo de espera aleatorio entre 2-4 segundos
+        long randomTimeout = UNO_TIMEOUT_MIN_MS + (long) (Math.random() * (UNO_TIMEOUT_MAX_MS - UNO_TIMEOUT_MIN_MS));
+        int timeoutSeconds = (int) (randomTimeout / 1000);
+        
+        setTurnLabel("¡Tienes " + timeoutSeconds + " segundos para declarar UNO!");
+        
+        // Mostrar el boton del UNO
+        Platform.runLater(() -> {
+            unoButton.setVisible(true);
+            unoButton.setDisable(false);
+        });
+        
+        // Inicia el tiempo del hilo
+        new Thread(() -> {
+            try {
+                Thread.sleep(randomTimeout);
+                
+                // Verificar si el temporizador sigue activo (el jugador no ha cantado UNO)
+                if (unoTimerActive && humanPlayer.getCardsPlayer().size() == 1) {
+                    Platform.runLater(() -> {
+                        // El jugador no cantó UNO a tiempo, permitir que la máquina lo cante
+                        setTurnLabel("¡Tiempo agotado! La máquina puede cantar UNO");
+                        unoButton.setVisible(false);
+                        unoButton.setDisable(true);
+                        setMachineCanSayOneToPlayer(true);
+                    });
+                }
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }).start();
+    }
+
+    /**
+     * Stops the UNO timer.
+     */
+    public void stopUnoTimer() {
+        unoTimerActive = false;
+        Platform.runLater(() -> {
+            unoButton.setVisible(false);
+            unoButton.setDisable(true);
+        });
+    }
+
+    /**
+     * Checks if the UNO timer is active.
+     *
+     * @return true if the UNO timer is active, false otherwise
+     */
+    public boolean isUnoTimerActive() {
+        return unoTimerActive;
+    }
+
+    /**
+     * Resets the UNO state when a player's card count changes.
+     */
+    public void resetUnoState() {
+        if (humanPlayer.getCardsPlayer().size() != 1) {
+            stopUnoTimer();
+            setHumanCanSayONE(false);
         }
     }
 }

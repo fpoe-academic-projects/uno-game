@@ -54,48 +54,69 @@ public class ThreadPlayMachine extends Thread {
                 machinePlayer.removeCard(i);
                 cardPlayed = true;
 
-                // Check if machine just played their last card
+                // Verificar si la máquina acaba de jugar su última carta
                 if (machinePlayer.getCardsPlayer().size() == 0) {
-                    // Machine player won - this will be handled by ThreadWinGame
+                    // La máquina ganó - esto será manejado por ThreadWinGame
                 } else if (machinePlayer.getCardsPlayer().size() == 1) {
-                    // Machine has 1 card left - enable human to call UNO
+                    // La máquina tiene 1 carta restante - habilitar al humano para cantar UNO
                     Platform.runLater(() -> {
                         controller.setHumanCanSayONEToMachine(true);
+                        controller.showUnoButtonForMachine();
+                        controller.setTurnLabel("¡La máquina tiene 1 carta! ¡Puedes cantar UNO!");
                     });
                 }
 
                 if (controller.isSpecial(card.getValue())) {
                     controller.specialCard(card, machinePlayer, controller.getHumanPlayer());
                 } else {
-                    // Carta normal: pasar turno al humano
+                    // Carta normal: pasar turno al jugador
                     controller.setHumanTurn(true);
                 }
+                
+                // Mostrar conteo de cartas después de que la máquina juegue
+                System.out.println("MÁQUINA JUGÓ - Jugador: " + controller.getHumanPlayer().getCardsPlayer().size() + " | Máquina: " + machinePlayer.getCardsPlayer().size());
 
                 break;
             }
         }
 
         if (!cardPlayed) {
-            // Si no puede jugar ninguna carta, roba una
+            // Si no puede jugar ninguna carta, toma una
             // Verificar si hay cartas en el mazo antes de intentar tomar una
             if (deck.isEmpty()) {
-                System.out.println("No hay más cartas en el mazo para que la máquina robe");
+                System.out.println("No hay más cartas en el mazo para que la máquina pueda tomar");
                 controller.setHumanTurn(true);
                 return;
             }
             
             Card drawnCard = deck.takeCard();
             machinePlayer.addCard(drawnCard);
-            System.out.println("La maquina comio");
+
+            // Verificar si la máquina ahora tiene 1 carta después de robar
+            if (machinePlayer.getCardsPlayer().size() == 1) {
+                Platform.runLater(() -> {
+                    controller.setHumanCanSayONEToMachine(true);
+                    controller.showUnoButtonForMachine();
+                    controller.setTurnLabel("¡La máquina tiene 1 carta! ¡Puedes cantar UNO!");
+                });
+            }
 
             if (controller.canPlayCard(drawnCard, table)) {
                 table.addCardOnTheTable(drawnCard);
                 tableImageView.setImage(drawnCard.getImage());
                 machinePlayer.removeCard(machinePlayer.getCardsPlayer().size() - 1); // ultima carta añadida
 
+                // Verificar si la máquina ahora tiene 1 carta después de jugar la carta robada
+                if (machinePlayer.getCardsPlayer().size() == 1) {
+                    Platform.runLater(() -> {
+                        controller.setHumanCanSayONEToMachine(true);
+                        controller.showUnoButtonForMachine();
+                        controller.setTurnLabel("¡La máquina tiene 1 carta! ¡Puedes cantar UNO!");
+                    });
+                }
+
                 if (controller.isSpecial(drawnCard.getValue())) {
                     controller.specialCard(drawnCard, machinePlayer, controller.getHumanPlayer());
-                    System.out.println("La maquina jugo la carta que comio");
                 } else {
                     controller.setHumanTurn(true);
                 }
