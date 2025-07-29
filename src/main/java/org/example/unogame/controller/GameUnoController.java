@@ -1,8 +1,10 @@
 package org.example.unogame.controller;
 
+import javafx.animation.ScaleTransition;
 import javafx.geometry.Insets;
 import javafx.scene.layout.HBox;
 import javafx.scene.shape.Rectangle;
+import javafx.util.Duration;
 import org.example.unogame.model.card.Card;
 import org.example.unogame.model.deck.Deck;
 import org.example.unogame.model.game.GameUno;
@@ -29,23 +31,17 @@ import org.example.unogame.model.unoenum.UnoEnum;
  */
 public class GameUnoController {
 
-    @FXML
-    private GridPane gridPaneCardsMachine;
+    @FXML private GridPane gridPaneCardsMachine;
+    @FXML private GridPane gridPaneCardsPlayer;
+    @FXML private ImageView tableImageView;
+    @FXML private VBox colorVBox;
+    @FXML private ImageView exitButton;
+    @FXML private ImageView deckButton;
+    @FXML private ImageView nextButton;
+    @FXML private ImageView backButton;
+    @FXML private ImageView unoButton;
 
-    @FXML
-    private GridPane gridPaneCardsPlayer;
-
-    @FXML
-    private ImageView tableImageView;
-
-    @FXML
-    private ImageView deckButton;
-
-    @FXML
-    private VBox colorVBox;
-
-    @FXML
-    public Label turnLabel;
+    @FXML public Label turnLabel;
 
     private Player humanPlayer;
     private Player machinePlayer;
@@ -78,6 +74,12 @@ public class GameUnoController {
         initVariables();
         this.gameUno.startGame();
         updateGridPaneMargin();
+
+        applyHoverEffect(exitButton);
+        applyHoverEffect(deckButton);
+        applyHoverEffect(nextButton);
+        applyHoverEffect(backButton);
+        applyHoverEffect(unoButton);
 
         tableImageView.setImage(this.table.getCurrentCardOnTheTable().getImage()); // mostrar visualmente a carta inciial en la mesa
         refreshGameView();
@@ -461,6 +463,19 @@ public class GameUnoController {
         });
     }
 
+    private void applyHoverEffect(ImageView button) {
+        ScaleTransition shrink = new ScaleTransition(Duration.millis(150), button);
+        shrink.setToX(0.9);
+        shrink.setToY(0.9);
+
+        ScaleTransition grow = new ScaleTransition(Duration.millis(150), button);
+        grow.setToX(1.0);
+        grow.setToY(1.0);
+
+        button.setOnMouseEntered(e -> shrink.playFromStart());
+        button.setOnMouseExited(e -> grow.playFromStart());
+    }
+
     private void updateGridPaneMargin(){
         colorVBox.visibleProperty().addListener((obs, wasVisible, isNowVisible) -> {
             if (!isNowVisible) {
@@ -538,11 +553,9 @@ public class GameUnoController {
 
     @FXML
     private void handleExitClick(MouseEvent event) {
-        // Cerramos la ventana actual
         Stage currentStage = (Stage) ((ImageView) event.getSource()).getScene().getWindow();
         currentStage.close();
     }
-
 
     /**
      * Handles the action of saying "Uno".
