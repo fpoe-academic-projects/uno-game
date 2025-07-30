@@ -9,6 +9,8 @@ import org.example.unogame.model.table.Table;
 import javafx.application.Platform;
 import javafx.scene.image.ImageView;
 
+import java.util.List;
+
 public class ThreadPlayMachine extends Thread {
     private Table table;
     private Player machinePlayer;
@@ -67,6 +69,11 @@ public class ThreadPlayMachine extends Thread {
 
         if (!cardPlayed) {
             // Si no puede jugar ninguna carta, roba una
+            if (deck.isEmpty()) {
+                List<Card> discards = table.collectDiscardsExceptTop(true); // true = resets wild/ +4 to black
+                deck.reloadFrom(discards);
+            }
+
             Card drawnCard = deck.takeCard();
             machinePlayer.addCard(drawnCard);
             System.out.println("La maquina comio");

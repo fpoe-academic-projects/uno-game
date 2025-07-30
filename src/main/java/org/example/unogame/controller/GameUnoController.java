@@ -54,6 +54,7 @@ public class GameUnoController {
     private Card card;
     private int posInitCardToShow;
     private volatile boolean isHumanTurn;
+    private volatile boolean waitingForColor = false;
 
     // UNO calling state variables
     private boolean humanCanSayONE = true;
@@ -85,6 +86,8 @@ public class GameUnoController {
         applyHoverEffect(unoButton);
 
         tableImageView.setImage(this.table.getCurrentCardOnTheTable().getImage()); // mostrar visualmente a carta inciial en la mesa
+        this.humanPlayer.addCard(new Card(UnoEnum.WILD.getFilePath(), "WILD", "BLACK"));
+        this.humanPlayer.addCard(new Card(UnoEnum.FOUR_WILD_DRAW.getFilePath(), "+4", "BLACK"));
         refreshGameView();
 
         threadPlayMachine = new ThreadPlayMachine(this.table, this.machinePlayer, this.tableImageView, this, this.deck);
@@ -142,6 +145,9 @@ public class GameUnoController {
 
             cardRectangle.setOnMouseClicked((MouseEvent event) -> {
                 if (!isHumanTurn) return; // solo si es su turno
+                if (!canPlayCard(card, table)) return;
+                if (waitingForColor) return;
+
 
                 if (canPlayCard(card, table)) { // verifica si puede jugar la carta
                     gameUno.playCard(card);
@@ -218,6 +224,9 @@ public class GameUnoController {
         String colorOnTable = currentCard.getColor();
         String valueOnTable = currentCard.getValue();
 
+        if (waitingForColor)
+            return false;
+
         // siempre se pueden jugar WILD o +4
         if ("WILD".equals(valueToPlay) || "+4".equals(valueToPlay)) {
             return true;
@@ -250,9 +259,10 @@ public class GameUnoController {
             case "WILD":
                 if (currentPlayer.equals(humanPlayer)) {
                     this.card = card;
-                    showColorPicker(); // usuario elige color de la carta
-                    // no cambiar turno hasta que el usuario seleccione color
                     deckButton.setDisable(true);
+                    setWaitingForColor(true);
+                    setHumanTurn(true); // no cambiar turno hasta que el usuario seleccione color
+                    showColorPicker(); // usuario elige color de la carta
                 } else {
                     String randomColor = threadPlayMachine.getRandomColorFromHand();
                     table.setColorOnTheTable(randomColor);
@@ -334,6 +344,10 @@ public class GameUnoController {
 
     public boolean isHumanTurn() {
         return isHumanTurn;
+    }
+
+    public void setWaitingForColor(boolean waiting) {
+        this.waitingForColor = waiting;
     }
 
     public Player getHumanPlayer(){
@@ -553,10 +567,10 @@ public class GameUnoController {
         table.setColorOnTheTable(selectedColor); //cambia el color en la mesa y en todo el juego
         currentCard.setColor(selectedColor);
         hideColorPicker();
+        setWaitingForColor(false);
+        setHumanTurn(false);
 
         if ("WILD".equals(card.getValue())) {
-            // tras elegir color, el turno pasa a la maquina
-            setHumanTurn(false);
             deckButton.setDisable(true);
         }
 
@@ -572,6 +586,12 @@ public class GameUnoController {
     void onHandleTakeCard(MouseEvent event) {
         if (!isHumanTurn) return; // solo si es turno humano
         if (deckButton.isDisable()) return; // ya comio
+        if (waitingForColor) return;
+
+        if (deck.isEmpty()) {
+            List<Card> discards = table.collectDiscardsExceptTop(true); // true = resets wild/ +4 to black
+            deck.reloadFrom(discards);
+        }
 
         Card drawCard = deck.takeCard();
         humanPlayer.addCard(drawCard);

@@ -3,18 +3,23 @@ package org.example.unogame.model.table;
 import org.example.unogame.model.card.Card;
 
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
 /**
  * Represents the table in the Uno game where cards are played.
  */
 public class Table {
-    private ArrayList<Card> cardsTable;
+    public static class TableRecycleException extends RuntimeException {
+        public TableRecycleException(String message) { super(message); }
+    }
+    private final ArrayList<Card> cardsTable;
 
     /**
      * Constructs a new Table object with no cards on it.
      */
     public Table(){
-        this.cardsTable = new ArrayList<Card>();
+        this.cardsTable = new ArrayList<>();
     }
 
     /**
@@ -22,7 +27,7 @@ public class Table {
      *
      * @param card The card to be added to the table.
      */
-    public void addCardOnTheTable(Card card){
+    public synchronized void addCardOnTheTable(Card card){
         this.cardsTable.add(card);
     }
 
@@ -32,24 +37,70 @@ public class Table {
      * @return The card currently on the table.
      * @throws IndexOutOfBoundsException if there are no cards on the table.
      */
-    public Card getCurrentCardOnTheTable() throws IndexOutOfBoundsException {
+    public synchronized Card getCurrentCardOnTheTable() throws IndexOutOfBoundsException {
         if (cardsTable.isEmpty()) {
             throw new IndexOutOfBoundsException("There are no cards on the table.");
         }
         return this.cardsTable.get(this.cardsTable.size()-1);
     }
 
-    public String getColorOnTheTable() {
+    public synchronized String getColorOnTheTable() {
         if (cardsTable.isEmpty()) {
             throw new IndexOutOfBoundsException("There are no cards on the table.");
         }
         return this.cardsTable.get(this.cardsTable.size() - 1).getColor();
     }
 
-    public void setColorOnTheTable(String color) {
+    public synchronized void setColorOnTheTable(String color) {
         if (cardsTable.isEmpty()) {
             throw new IndexOutOfBoundsException("There are no cards on the table.");
         }
         this.cardsTable.get(this.cardsTable.size() - 1).setColor(color);
+    }
+
+    /**
+     * Collects all discard cards from the table, EXCEPT the top card.
+     * Leaves only the current top card on the table.
+     *
+     * @param resetWildToBlack if true, resets WILD and +4 cards back to color "BLACK"
+     *                         before returning them (útil cuando se recicla el mazo).
+     * @return a modifiable list containing the collected discard cards (may be empty).
+     */
+    public synchronized List<Card> collectDiscardsExceptTop(boolean resetWildToBlack) {
+        int size = cardsTable.size();
+        if (size <= 1) {
+            return Collections.emptyList();
+        }
+
+        List<Card> discards = new ArrayList<>(cardsTable.subList(0, size - 1));
+
+        if (resetWildToBlack) {
+            if (discards == null) {
+                throw new IllegalArgumentException("No hay cartas descartadas.");
+            }
+            for (int i = 0; i < discards.size(); i++) {
+                Card card = discards.get(i);
+                if (card == null) {
+                    throw new TableRecycleException("Se encontró una carta nula en el índice " + i + ".");
+                }
+                String value = card.getValue();
+                if ("WILD".equals(value) || "+4".equals(value)) {
+                    card.setColor("BLACK");
+                }
+            }
+        }
+
+        Card top = cardsTable.get(size - 1);
+        cardsTable.clear();
+        cardsTable.add(top);
+
+        return discards;
+    }
+
+    /**
+     * Helper: current number of cards on the table.
+     */
+    public synchronized int size() {
+        return cardsTable.size();
     }
 }
