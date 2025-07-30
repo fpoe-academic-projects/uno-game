@@ -1,5 +1,6 @@
 package org.example.unogame.model.machine;
 
+import javafx.application.Platform;
 import org.example.unogame.controller.GameUnoController;
 import org.example.unogame.model.card.Card;
 import org.example.unogame.model.deck.Deck;
@@ -47,7 +48,7 @@ public class ThreadPlayMachine extends Thread {
                     System.err.println("Carta nula encontrada al jugar: " + e.getMessage());
                 } catch (GameException.OutOfCardsInDeck e) {
                     System.err.println("No hay más cartas en el mazo para robar.");
-                } catch (GameException.EmptyTableException e) {
+                } catch (GameException.EmptyTableException | GameException.IllegalCardColor e) {
                     System.err.println("La mesa está vacía cuando no debería estarlo.");
                 }
 
