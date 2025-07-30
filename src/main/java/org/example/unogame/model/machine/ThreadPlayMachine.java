@@ -3,10 +3,10 @@ package org.example.unogame.model.machine;
 import org.example.unogame.controller.GameUnoController;
 import org.example.unogame.model.card.Card;
 import org.example.unogame.model.deck.Deck;
+import org.example.unogame.model.exception.GameException;
 import org.example.unogame.model.player.Player;
 import org.example.unogame.model.table.Table;
 
-import javafx.application.Platform;
 import javafx.scene.image.ImageView;
 
 public class ThreadPlayMachine extends Thread {
@@ -25,37 +25,50 @@ public class ThreadPlayMachine extends Thread {
         this.deck = deck;
     }
 
+    @Override
     public void run() {
         while (running) {
             if (!controller.isHumanTurn()) {
                 controller.refreshGameView();
                 try {
-                    Thread.sleep(2000); // espera 2 segundos
+                    Thread.sleep(2000);
                 } catch (InterruptedException e) {
-                    e.printStackTrace();
+                    // Si el hilo es interrumpido, simplemente salimos
+                    return;
                 }
-                putCardOnTheTable();
+
+                try {
+                    putCardOnTheTable();
+                } catch (GameException.InvalidCardIndex e) {
+                    System.err.println("Índice inválido al jugar carta de máquina: " + e.getMessage());
+                } catch (GameException.NullCardException e) {
+                    System.err.println("Carta nula encontrada al jugar: " + e.getMessage());
+                } catch (GameException.OutOfCardsInDeck e) {
+                    System.err.println("No hay más cartas en el mazo para robar.");
+                } catch (GameException.EmptyTableException e) {
+                    System.err.println("La mesa está vacía cuando no debería estarlo.");
+                }
+
                 controller.refreshGameView();
             }
         }
     }
 
-    private void putCardOnTheTable() {
+    private void putCardOnTheTable() throws GameException.InvalidCardIndex, GameException.NullCardException, GameException.OutOfCardsInDeck, GameException.EmptyTableException {
         boolean cardPlayed = false;
 
         for (int i = 0; i < machinePlayer.getCardsPlayer().size(); i++) {
-            Card card = machinePlayer.getCard(i);
+            Card card = machinePlayer.getCard(i);  // puede lanzar InvalidCardIndex
 
             if (controller.canPlayCard(card, table)) {
-                table.addCardOnTheTable(card);
+                table.addCardOnTheTable(card); // puede lanzar NullCardException o EmptyTableException
                 tableImageView.setImage(card.getImage());
-                machinePlayer.removeCard(i);
+                machinePlayer.removeCard(i); // puede lanzar InvalidCardIndex
                 cardPlayed = true;
 
                 if (controller.isSpecial(card.getValue())) {
                     controller.specialCard(card, machinePlayer, controller.getHumanPlayer());
                 } else {
-                    // Carta normal: pasar turno al humano
                     controller.setHumanTurn(true);
                 }
 
@@ -64,25 +77,24 @@ public class ThreadPlayMachine extends Thread {
         }
 
         if (!cardPlayed) {
-            // Si no puede jugar ninguna carta, roba una
-            Card drawnCard = deck.takeCard();
-            machinePlayer.addCard(drawnCard);
-            System.out.println("La maquina comio");
+            Card drawnCard = deck.takeCard(); // puede lanzar OutOfCardsInDeck
+
+            if (drawnCard != null) {
+                machinePlayer.addCard(drawnCard); // puede lanzar NullCardException
+                System.out.println("La máquina robó una carta.");
+            } else {
+                System.err.println("Se intentó robar pero el mazo está vacío.");
+            }
+
             controller.setHumanTurn(true);
         }
     }
-
 
     public String getRandomColorFromHand() {
         String[] colors = {"RED", "BLUE", "YELLOW", "GREEN"};
         return colors[(int) (Math.random() * colors.length)];
     }
 
-    /**
-     * Sets whether the thread is running.
-     *
-     * @param running true if the thread is running, false otherwise
-     */
     public void setRunning(boolean running) {
         this.running = running;
     }

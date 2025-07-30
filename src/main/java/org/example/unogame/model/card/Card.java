@@ -3,6 +3,7 @@ package org.example.unogame.model.card;
 import javafx.scene.image.Image;
 import javafx.scene.paint.ImagePattern;
 import javafx.scene.shape.Rectangle;
+import org.example.unogame.model.exception.GameException;
 import org.example.unogame.model.unoenum.UnoEnum;
 
 /**
@@ -21,13 +22,25 @@ public class Card {
      * @param url the URL of the card image
      * @param value of the card
      */
-    public Card(String url, String value, String color) {
+    public Card(String url, String value, String color) throws GameException {
+        if (value == null || value.isEmpty()) {
+            throw new GameException.IllegalCardValue("Card value is null or empty.");
+        }
+        if (color == null || color.isEmpty()) {
+            throw new GameException.IllegalCardColor("Card color is null or empty.");
+        }
         this.url = url;
         this.value = value;
         this.color = color;
-        this.image = new Image(String.valueOf(getClass().getResource(url)));
+
+        var resource = getClass().getResource(url);
+        if (resource == null) {
+            throw new GameException("Card image resource not found: " + url);
+        }
+        this.image = new Image(resource.toString());
         this.cardRectangle = createCardRectangle();
     }
+
 
     // Constructor for testing
     public Card(String value, String color) {
@@ -88,8 +101,12 @@ public class Card {
         return color;
     }
 
-    public void setColor(String color) {
+    public void setColor(String color) throws GameException.IllegalCardColor {
+        if (color == null || color.isEmpty()) {
+            throw new GameException.IllegalCardColor("Color cannot be null or empty when changing color.");
+        }
         this.color = color;
     }
+
 
 }

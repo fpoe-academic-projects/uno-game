@@ -2,6 +2,7 @@ package org.example.unogame.model.game;
 
 import org.example.unogame.model.card.Card;
 import org.example.unogame.model.deck.Deck;
+import org.example.unogame.model.exception.GameException;
 import org.example.unogame.model.player.Player;
 import org.example.unogame.model.table.Table;
 
@@ -36,7 +37,7 @@ public class GameUno implements IGameUno {
      * The human player and the machine player each receive 10 cards from the deck.
      */
     @Override
-    public void startGame() {
+    public void startGame() throws GameException.OutOfCardsInDeck, GameException.NullCardException {
         for (int i = 0; i < 10; i++) {
             if (i < 5) {
                 humanPlayer.addCard(this.deck.takeCard());
@@ -64,7 +65,7 @@ public class GameUno implements IGameUno {
      * @param numberOfCards The number of cards to draw.
      */
     @Override
-    public void eatCard(Player player, int numberOfCards) {
+    public void eatCard(Player player, int numberOfCards) throws GameException.OutOfCardsInDeck, GameException.NullCardException {
         for (int i = 0; i < numberOfCards; i++) {
             player.addCard(this.deck.takeCard());
         }
@@ -76,7 +77,10 @@ public class GameUno implements IGameUno {
      * @param card The card to be placed on the table.
      */
     @Override
-    public void playCard(Card card) {
+    public void playCard(Card card) throws GameException.NullCardException {
+        if (card == null) {
+            throw new GameException.NullCardException("No se puede jugar una carta nula");
+        }
         this.table.addCardOnTheTable(card);
     }
 
@@ -86,7 +90,7 @@ public class GameUno implements IGameUno {
      * @param playerWhoSang The player who shouted "Uno".
      */
     @Override
-    public void haveSungOne(String playerWhoSang) {
+    public void haveSungOne(String playerWhoSang) throws GameException.OutOfCardsInDeck, GameException.NullCardException {
         if (playerWhoSang.equals("HUMAN_PLAYER")) {
             machinePlayer.addCard(this.deck.takeCard());
         } else {
@@ -101,7 +105,7 @@ public class GameUno implements IGameUno {
      * @return An array of cards visible to the human player.
      */
     @Override
-    public Card[] getCurrentVisibleCardsHumanPlayer(int posInitCardToShow) {
+    public Card[] getCurrentVisibleCardsHumanPlayer(int posInitCardToShow) throws GameException.InvalidCardIndex {
         int totalCards = this.humanPlayer.getCardsPlayer().size();
         
         // Check if there are no cards or if posInitCardToShow is beyond available cards
@@ -126,7 +130,7 @@ public class GameUno implements IGameUno {
     }
 
     @Override
-    public Card[] getCurrentVisibleCardsMachinePlayer(int posInitCardToShow) {
+    public Card[] getCurrentVisibleCardsMachinePlayer(int posInitCardToShow) throws GameException.InvalidCardIndex {
         int totalCards = this.machinePlayer.getCardsPlayer().size();
         
         // Check if there are no cards or if posInitCardToShow is beyond available cards
@@ -157,6 +161,6 @@ public class GameUno implements IGameUno {
      */
     @Override
     public Boolean isGameOver() {
-        return null;
+        return deck.isEmpty();
     }
 }

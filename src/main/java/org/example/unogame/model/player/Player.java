@@ -1,6 +1,7 @@
 package org.example.unogame.model.player;
 
 import org.example.unogame.model.card.Card;
+import org.example.unogame.model.exception.GameException;
 
 import java.util.ArrayList;
 
@@ -15,17 +16,21 @@ public class Player implements IPlayer {
      * Constructs a new Player object with an empty hand of cards.
      */
     public Player(String typePlayer){
-        this.cardsPlayer = new ArrayList<Card>();
+        this.cardsPlayer = new ArrayList<>();
         this.typePlayer = typePlayer;
-    };
+    }
 
     /**
      * Adds a card to the player's hand.
      *
      * @param card The card to be added to the player's hand.
+     * @throws GameException.NullCardException if the card is null.
      */
     @Override
-    public void addCard(Card card){
+    public void addCard(Card card) throws GameException.NullCardException {
+        if (card == null) {
+            throw new GameException.NullCardException();
+        }
         cardsPlayer.add(card);
     }
 
@@ -43,9 +48,13 @@ public class Player implements IPlayer {
      * Removes a card from the player's hand based on its index.
      *
      * @param index The index of the card to remove.
+     * @throws GameException.InvalidCardIndex if the index is invalid.
      */
     @Override
-    public void removeCard(int index) {
+    public void removeCard(int index) throws GameException.InvalidCardIndex {
+        if (index < 0 || index >= cardsPlayer.size()) {
+            throw new GameException.InvalidCardIndex(index);
+        }
         cardsPlayer.remove(index);
     }
 
@@ -54,9 +63,13 @@ public class Player implements IPlayer {
      *
      * @param index The index of the card to retrieve.
      * @return The card at the specified index in the player's hand.
+     * @throws GameException.InvalidCardIndex if the index is invalid.
      */
     @Override
-    public Card getCard(int index){
+    public Card getCard(int index) throws GameException.InvalidCardIndex {
+        if (index < 0 || index >= cardsPlayer.size()) {
+            throw new GameException.InvalidCardIndex(index);
+        }
         return cardsPlayer.get(index);
     }
 
