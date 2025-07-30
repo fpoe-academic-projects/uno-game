@@ -9,6 +9,8 @@ import org.example.unogame.model.table.Table;
 
 import javafx.scene.image.ImageView;
 
+import java.util.List;
+
 public class ThreadPlayMachine extends Thread {
     private Table table;
     private Player machinePlayer;
@@ -54,16 +56,18 @@ public class ThreadPlayMachine extends Thread {
         }
     }
 
-    private void putCardOnTheTable() throws GameException.InvalidCardIndex, GameException.NullCardException, GameException.OutOfCardsInDeck, GameException.EmptyTableException {
+    private void putCardOnTheTable() throws GameException.InvalidCardIndex, GameException.NullCardException, GameException.OutOfCardsInDeck, GameException.EmptyTableException, GameException.IllegalCardColor {
         boolean cardPlayed = false;
 
         for (int i = 0; i < machinePlayer.getCardsPlayer().size(); i++) {
             Card card = machinePlayer.getCard(i);  // puede lanzar InvalidCardIndex
 
             if (controller.canPlayCard(card, table)) {
-                table.addCardOnTheTable(card); // puede lanzar NullCardException o EmptyTableException
-                tableImageView.setImage(card.getImage());
-                machinePlayer.removeCard(i); // puede lanzar InvalidCardIndex
+                table.addCardOnTheTable(card);
+                Platform.runLater(() -> {
+                    tableImageView.setImage(card.getImage());
+                });
+                machinePlayer.removeCard(i);
                 cardPlayed = true;
 
                 if (controller.isSpecial(card.getValue())) {
@@ -77,15 +81,15 @@ public class ThreadPlayMachine extends Thread {
         }
 
         if (!cardPlayed) {
-            Card drawnCard = deck.takeCard(); // puede lanzar OutOfCardsInDeck
-
-            if (drawnCard != null) {
-                machinePlayer.addCard(drawnCard); // puede lanzar NullCardException
-                System.out.println("La máquina robó una carta.");
-            } else {
-                System.err.println("Se intentó robar pero el mazo está vacío.");
+            // Si no puede jugar ninguna carta, roba una
+            if (deck.isEmpty()) {
+                List<Card> discards = table.collectDiscardsExceptTop(true); // true = resets wild/ +4 to black
+                deck.reloadFrom(discards);
             }
 
+            Card drawnCard = deck.takeCard();
+            machinePlayer.addCard(drawnCard);
+            System.out.println("La maquina comio");
             controller.setHumanTurn(true);
         }
     }

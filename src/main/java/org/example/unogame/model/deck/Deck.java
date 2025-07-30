@@ -94,6 +94,12 @@ public class Deck {
         return deckOfCards.pop();
     }
 
+    public void reloadFrom(java.util.List<Card> cards) {
+        if (cards == null || cards.isEmpty()) return;
+        deckOfCards.addAll(cards);
+        Collections.shuffle(deckOfCards);
+    }
+
     /**
      * Checks if the deck is empty.
      *
