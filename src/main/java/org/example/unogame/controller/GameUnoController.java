@@ -1,10 +1,9 @@
 package org.example.unogame.controller;
 
-import javafx.animation.ScaleTransition;
 import javafx.geometry.Insets;
+import javafx.scene.Node;
 import javafx.scene.layout.HBox;
 import javafx.scene.shape.Rectangle;
-import javafx.util.Duration;
 import org.example.unogame.model.card.Card;
 import org.example.unogame.model.deck.Deck;
 import org.example.unogame.model.exception.GameException;
@@ -25,13 +24,13 @@ import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
-import org.example.unogame.model.unoenum.UnoEnum;
 
 import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Controller class for the Uno game.
+ * Controller for the Uno game screen. It coordinates user interactions,
+ * machine actions, game rules enforcement, and UI updates.
  */
 public class GameUnoController {
 
@@ -54,6 +53,7 @@ public class GameUnoController {
     private GameUno gameUno;
     private Card card;
     private int posInitCardToShow;
+    private IAnimations animations;
     private volatile boolean isHumanTurn;
     private volatile boolean waitingForColor = false;
 
@@ -72,7 +72,10 @@ public class GameUnoController {
     private ThreadWinGame threadWinGame;
 
     /**
-     * Initializes the controller.
+     * Initializes the controller after FXML loading. Sets up the game model,
+     * applies UI effects, displays the initial table card, and starts worker threads.
+     *
+     * @throws GameException if initialization or game start fails
      */
     @FXML
     public void initialize() throws GameException {
@@ -80,41 +83,46 @@ public class GameUnoController {
         this.gameUno.startGame();
         updateGridPaneMargin();
 
-        applyHoverEffect(exitButton);
-        applyHoverEffect(deckButton);
-        applyHoverEffect(nextButton);
-        applyHoverEffect(backButton);
-        applyHoverEffect(unoButton);
+        // Apply hover effects to interactive UI elements
+        animations.applyHoverEffect(exitButton);
+        animations.applyHoverEffect(deckButton);
+        animations.applyHoverEffect(nextButton);
+        animations.applyHoverEffect(backButton);
+        animations.applyHoverEffect(unoButton);
 
-        tableImageView.setImage(this.table.getCurrentCardOnTheTable().getImage()); // mostrar visualmente a carta inciial en la mesa
-        this.humanPlayer.addCard(new Card(UnoEnum.WILD.getFilePath(), "WILD", "BLACK"));
-        this.humanPlayer.addCard(new Card(UnoEnum.FOUR_WILD_DRAW.getFilePath(), "+4", "BLACK"));
+        // Show the initial card on the table
+        tableImageView.setImage(this.table.getCurrentCardOnTheTable().getImage());
         refreshGameView();
 
+        // Start machine behavior thread
         threadPlayMachine = new ThreadPlayMachine(this.table, this.machinePlayer, this.tableImageView, this, this.deck);
         threadPlayMachine.start();
 
+        // Start UNO monitoring thread
         threadSingUNOMachine = new ThreadSingUNOMachine(
-            this.humanPlayer.getCardsPlayer(),
-            this.machinePlayer.getCardsPlayer(),
-            this,
-            this.threadPlayMachine
+                this.humanPlayer.getCardsPlayer(),
+                this.machinePlayer.getCardsPlayer(),
+                this,
+                this.threadPlayMachine
         );
         Thread t = new Thread(threadSingUNOMachine, "ThreadSingUNO");
         t.start();
 
+        // Start win-condition monitoring thread
         threadWinGame = new ThreadWinGame(
-            this.humanPlayer,
-            this.machinePlayer,
-            this.deck,
-            this
+                this.humanPlayer,
+                this.machinePlayer,
+                this.deck,
+                this
         );
         Thread winThread = new Thread(threadWinGame, "ThreadWinGame");
         winThread.start();
     }
 
     /**
-     * Initializes the variables for the game.
+     * Prepares game entities and default controller state before starting the match.
+     *
+     * @throws GameException if any model component fails to initialize
      */
     private void initVariables() throws GameException {
         this.humanPlayer = new Player("HUMAN_PLAYER");
@@ -124,17 +132,22 @@ public class GameUnoController {
         this.gameUno = new GameUno(this.humanPlayer, this.machinePlayer, this.deck, this.table);
         this.posInitCardToShow = 0;
         this.isHumanTurn = true;
+        this.animations = new AnimationsAdapter();
     }
 
     /**
-     * Prints the human player's cards on the grid pane.
+     * Renders the human player's visible cards and wires click handlers
+     * that attempt to play the selected card when valid.
+     *
+     * @throws GameException.InvalidCardIndex if a card index access is invalid
+     * @throws GameException.EmptyTableException if there is no card on the table
      */
     private void printCardsHumanPlayer() throws GameException.InvalidCardIndex, GameException.EmptyTableException {
         this.gridPaneCardsPlayer.getChildren().clear();
         Card[] currentVisibleCardsHumanPlayer = this.gameUno.getCurrentVisibleCardsHumanPlayer(this.posInitCardToShow);
         updateTurnLabel();
 
-        // Add safety check for null or empty array
+        // Defensive: nothing to draw
         if (currentVisibleCardsHumanPlayer == null || currentVisibleCardsHumanPlayer.length == 0) {
             return;
         }
@@ -142,10 +155,11 @@ public class GameUnoController {
         for (int i = 0; i < currentVisibleCardsHumanPlayer.length; i++) {
             Card card = currentVisibleCardsHumanPlayer[i];
             Rectangle cardRectangle = card.getCard();
-            applyHoverEffectCards(cardRectangle);
+            animations.applyHoverEffect(cardRectangle);
 
             cardRectangle.setOnMouseClicked((MouseEvent event) -> {
-                if (!isHumanTurn) return; // solo si es su turno
+                // Only act on the human turn and when no color selection is pending
+                if (!isHumanTurn) return;
                 try {
                     if (!canPlayCard(card, table)) return;
                 } catch (GameException.EmptyTableException e) {
@@ -153,37 +167,31 @@ public class GameUnoController {
                 }
                 if (waitingForColor) return;
 
-
                 try {
-                    if (canPlayCard(card, table)) { // verifica si puede jugar la carta
+                    if (canPlayCard(card, table)) {
                         try {
                             gameUno.playCard(card);
                         } catch (GameException.NullCardException e) {
                             throw new RuntimeException(e);
                         }
                         tableImageView.setImage(card.getImage());
+                        animations.cardAnimation(tableImageView);
                         try {
                             humanPlayer.removeCard(findPosCardsHumanPlayer(card));
                         } catch (GameException.InvalidCardIndex e) {
                             throw new RuntimeException(e);
                         }
 
-                        if (isSpecial(card.getValue())) { // verifica si es una carta especial
+                        // Handle special vs. regular cards and turn progression
+                        if (isSpecial(card.getValue())) {
                             try {
                                 specialCard(card, humanPlayer, machinePlayer);
-                            } catch (GameException.EmptyTableException e) {
-                                throw new RuntimeException(e);
-                            } catch (GameException.IllegalCardColor e) {
-                                throw new RuntimeException(e);
-                            } catch (GameException.OutOfCardsInDeck e) {
-                                throw new RuntimeException(e);
-                            } catch (GameException.NullCardException e) {
-                                throw new RuntimeException(e);
-                            } catch (GameException.InvalidCardIndex e) {
+                            } catch (GameException.EmptyTableException | GameException.IllegalCardColor
+                                     | GameException.OutOfCardsInDeck | GameException.NullCardException
+                                     | GameException.InvalidCardIndex e) {
                                 throw new RuntimeException(e);
                             }
                         } else {
-                            // carta normal -> turno maquina
                             try {
                                 setHumanTurn(false);
                             } catch (GameException.EmptyTableException e) {
@@ -201,6 +209,10 @@ public class GameUnoController {
         }
     }
 
+    /**
+     * Renders the machine player's hand as hidden back-cards (up to four),
+     * with a "+N" badge if there are more cards.
+     */
     private void printCardsMachinePlayer() {
         this.gridPaneCardsMachine.getChildren().clear();
 
@@ -209,7 +221,7 @@ public class GameUnoController {
             safeCopy = new ArrayList<>(machinePlayer.getCardsPlayer());
         }
 
-        // Add safety check for null or empty array
+        // Defensive: nothing to draw
         if (safeCopy == null || safeCopy.size() == 0) {
             return;
         }
@@ -217,14 +229,14 @@ public class GameUnoController {
         int maxVisibleCards = 4;
         int cardsToShow = Math.min(safeCopy.size(), maxVisibleCards);
 
-        // Show 4 cards
+        // Show up to four back-card placeholders
         for (int i = 0; i < cardsToShow; i++) {
             Rectangle backCard = Card.getBackCardRectangle();
-            applyHoverEffectCards(backCard);
+            animations.applyHoverEffect(backCard);
             this.gridPaneCardsMachine.add(backCard, i, 0);
         }
 
-        // If there are more than 4 cards, show a +N label on top of the last visible card
+        // If more than four, add a count overlay to the last visible slot
         if (safeCopy.size() > maxVisibleCards) {
             int remaining = safeCopy.size() - maxVisibleCards;
             Label plusLabel = new Label("+" + remaining);
@@ -234,10 +246,10 @@ public class GameUnoController {
     }
 
     /**
-     * Finds the position of a specific card in the human player's hand.
+     * Finds the index of the given card in the human player's hand.
      *
-     * @param card the card to find
-     * @return the position of the card, or -1 if not found
+     * @param card the card to look for
+     * @return the index of the card, or -1 if it is not present
      */
     private Integer findPosCardsHumanPlayer(Card card) {
         for (int i = 0; i < this.humanPlayer.getCardsPlayer().size(); i++) {
@@ -248,8 +260,17 @@ public class GameUnoController {
         return -1;
     }
 
-    public boolean canPlayCard(Card cardPlay, Table table) throws GameException.EmptyTableException { // recibe carta a jugar y la mesa
-        Card currentCard = table.getCurrentCardOnTheTable(); // con el tablero que recibe de parametro, obtenemos la carta actual en la mesa
+    /**
+     * Determines if the provided card can be legally placed on the table
+     * over the current top card according to Uno rules.
+     *
+     * @param cardPlay the card the player wants to play
+     * @param table the table state reference
+     * @return true if the move is valid; false otherwise
+     * @throws GameException.EmptyTableException if no card is currently on the table
+     */
+    public boolean canPlayCard(Card cardPlay, Table table) throws GameException.EmptyTableException {
+        Card currentCard = table.getCurrentCardOnTheTable();
 
         String colorToPlay = cardPlay.getColor();
         String valueToPlay = cardPlay.getValue();
@@ -260,31 +281,46 @@ public class GameUnoController {
         if (waitingForColor)
             return false;
 
-        // siempre se pueden jugar WILD o +4
+        // Wild and +4 are always playable
         if ("WILD".equals(valueToPlay) || "+4".equals(valueToPlay)) {
             return true;
         }
 
-        if ("+4".equals(valueOnTable)) { // para poder poner cualquier carta despues del +4 (el jugador que la puso)
+        // After a +4, the same player may play any card
+        if ("+4".equals(valueOnTable)) {
             return true;
         }
 
-        // coincide el color
+        // Match by color
         if (colorToPlay != null && colorOnTable != null && colorToPlay.equals(colorOnTable)) {
             return true;
         }
 
-        // coincide el valor
+        // Match by value
         if (valueToPlay != null && valueOnTable != null && valueToPlay.equals(valueOnTable)) {
             return true;
         }
 
         refreshGameView();
-
         return false;
     }
 
-    public void specialCard(Card card, Player currentPlayer, Player otherPlayer) throws GameException.EmptyTableException, GameException.IllegalCardColor, GameException.OutOfCardsInDeck, GameException.NullCardException, GameException.InvalidCardIndex {
+    /**
+     * Applies the effect of a special card and manages turn flow accordingly.
+     *
+     * @param card the played special card
+     * @param currentPlayer the player who played the card
+     * @param otherPlayer the opponent player
+     * @throws GameException.EmptyTableException if the table is empty
+     * @throws GameException.IllegalCardColor if an invalid color is applied
+     * @throws GameException.OutOfCardsInDeck if the deck runs out of cards
+     * @throws GameException.NullCardException if a null card is processed unexpectedly
+     * @throws GameException.InvalidCardIndex if a hand index is invalid
+     */
+    public void specialCard(Card card, Player currentPlayer, Player otherPlayer)
+            throws GameException.EmptyTableException, GameException.IllegalCardColor, GameException.OutOfCardsInDeck,
+            GameException.NullCardException, GameException.InvalidCardIndex {
+
         String value = card.getValue();
         Card currentCard = table.getCurrentCardOnTheTable();
 
@@ -294,13 +330,13 @@ public class GameUnoController {
                     this.card = card;
                     deckButton.setDisable(true);
                     setWaitingForColor(true);
-                    setHumanTurn(true); // no cambiar turno hasta que el usuario seleccione color
-                    showColorPicker(); // usuario elige color de la carta
+                    setHumanTurn(true); // keep turn until the user chooses a color
+                    showColorPicker();
                 } else {
                     String randomColor = threadPlayMachine.getRandomColorFromHand();
                     table.setColorOnTheTable(randomColor);
                     currentCard.setColor(randomColor);
-                    // cambia el turno al otro jugador tras asignar color automatico
+                    // pass turn to the opponent after auto color selection
                     setHumanTurn(!currentPlayer.equals(humanPlayer));
                     deckButton.setDisable(!isHumanTurn);
                 }
@@ -308,9 +344,9 @@ public class GameUnoController {
 
             case "+2":
                 for (int i = 0; i < 2; i++) {
-                    otherPlayer.addCard(deck.takeCard()); // pone a comer al jugador contrario
+                    otherPlayer.addCard(deck.takeCard());
                 }
-                // quien juega +2 repite turno
+                // the player who plays +2 takes another turn
                 setHumanTurn(currentPlayer.equals(humanPlayer));
                 deckButton.setDisable(!isHumanTurn);
                 break;
@@ -320,12 +356,13 @@ public class GameUnoController {
                     otherPlayer.addCard(deck.takeCard());
                 }
                 if (currentPlayer.equals(humanPlayer)) {
+                    // the player who plays +4 takes another turn; color will be chosen via UI
                     setHumanTurn(currentPlayer.equals(humanPlayer));
                     deckButton.setDisable(!isHumanTurn);
                 } else {
-                    String randomColor = threadPlayMachine.getRandomColorFromHand(); // si es maquina, escoge un color al azar del mazo y lo pone
+                    String randomColor = threadPlayMachine.getRandomColorFromHand();
                     table.setColorOnTheTable(randomColor);
-                    // quien juega +4 repite turno
+                    // the player who plays +4 takes another turn
                     setHumanTurn(currentPlayer.equals(humanPlayer));
                     deckButton.setDisable(!isHumanTurn);
                 }
@@ -333,23 +370,34 @@ public class GameUnoController {
 
             case "SKIP":
             case "RESERVE":
-                setHumanTurn(currentPlayer.equals(humanPlayer)); // vuelve a jugar quien pone la carta
+                // the player who plays SKIP/RESERVE takes another turn
+                setHumanTurn(currentPlayer.equals(humanPlayer));
                 deckButton.setDisable(!isHumanTurn);
                 break;
 
             default:
-                // para cualquier carta normal no especial
-                // cambia el turno a oponente
+                // normal card: pass turn to the opponent
                 setHumanTurn(!currentPlayer.equals(humanPlayer));
                 deckButton.setDisable(!isHumanTurn);
                 break;
         }
     }
 
+    /**
+     * Indicates whether the provided value corresponds to a special card.
+     *
+     * @param value the card face value
+     * @return true if the value matches a special card; false otherwise
+     */
     public boolean isSpecial(String value) {
         return "SKIP".equals(value) || "+2".equals(value) || "+4".equals(value) || "RESERVE".equals(value) || "WILD".equals(value);
     }
 
+    /**
+     * Shows the color selection panel and prevents card plays until a color is chosen.
+     *
+     * @throws GameException.InvalidCardIndex if an invalid index is accessed while wiring events
+     */
     public void showColorPicker() throws GameException.InvalidCardIndex {
         colorVBox.setVisible(true);
         colorVBox.setManaged(true);
@@ -358,84 +406,104 @@ public class GameUnoController {
         for (int i = 0; i < currentVisibleCardsHumanPlayer.length; i++) {
             Rectangle cardRectangle = card.getCard();
             cardRectangle.setOnMouseClicked((MouseEvent event) -> {
+                // While choosing a color, do not allow further human plays
                 if (isHumanTurn) return;
             });
         }
     }
 
+    /**
+     * Hides the color selection panel and restores layout spacing.
+     */
     public void hideColorPicker() {
         colorVBox.setVisible(false);
         colorVBox.setManaged(false);
         updateGridPaneMargin();
     }
 
+    /**
+     * Updates the internal and UI state to reflect whose turn it is.
+     *
+     * @param humanTurn true if it is the human's turn; false for the machine
+     * @throws GameException.EmptyTableException if updating the label requires the current table color and it is missing
+     */
     public void setHumanTurn(boolean humanTurn) throws GameException.EmptyTableException {
         this.isHumanTurn = humanTurn;
         deckButton.setDisable(!humanTurn);
         updateTurnLabel();
     }
 
+    /**
+     * @return true if it is currently the human's turn; false otherwise
+     */
     public boolean isHumanTurn() {
         return isHumanTurn;
     }
 
+    /**
+     * Sets whether the controller is waiting for a color selection
+     * (e.g., after playing a WILD).
+     *
+     * @param waiting true to block plays until a color is selected
+     */
     public void setWaitingForColor(boolean waiting) {
         this.waitingForColor = waiting;
     }
 
+    /**
+     * @return the human player reference
+     */
     public Player getHumanPlayer(){
         return humanPlayer;
     }
 
     /**
-     * Gets the machine player.
-     *
-     * @return the machine player
+     * @return the machine player reference
      */
     public Player getMachinePlayer(){
         return machinePlayer;
     }
 
     /**
-     * Sets whether the human player can say UNO.
+     * Configures if the human is allowed to call "UNO".
      *
-     * @param humanCanSayONE true if the human player can say UNO, false otherwise
+     * @param humanCanSayONE true to allow; false to block
      */
     public void setHumanCanSayONE(boolean humanCanSayONE) {
         this.humanCanSayONE = humanCanSayONE;
     }
 
     /**
-     * Sets whether the human player can say UNO to the machine.
+     * Configures if the human is allowed to call "UNO" on the machine.
      *
-     * @param humanCanSayONEToMachine true if the human player can say UNO to the machine, false otherwise
+     * @param humanCanSayONEToMachine true to allow; false to block
      */
     public void setHumanCanSayONEToMachine(boolean humanCanSayONEToMachine) {
         this.humanCanSayONEToMachine = humanCanSayONEToMachine;
     }
 
     /**
-     * Sets whether the machine has said UNO.
+     * Records whether the machine has already called "UNO".
      *
-     * @param machineSayOne true if the machine has said UNO, false otherwise
+     * @param machineSayOne true if already called; false otherwise
      */
     public void setMachineSayOne(boolean machineSayOne) {
         this.machineSayOne = machineSayOne;
     }
 
     /**
-     * Sets whether the human player can play.
+     * Enables or disables the human's ability to play.
      *
-     * @param playHuman true if the human player can play, false otherwise
+     * @param playHuman true to allow human to play; false to restrict
      */
     public void setPlayHuman(boolean playHuman) {
         this.playHuman = playHuman;
     }
 
     /**
-     * Sets the turn label text.
+     * Sets the text of the turn label in a thread-safe manner.
      *
-     * @param text the text to display in the turn label
+     * @param text the text to display
      */
     public void setTurnLabel(String text) {
         Platform.runLater(() -> {
@@ -444,45 +512,37 @@ public class GameUnoController {
     }
 
     /**
-     * Gets whether the human player can say UNO.
-     *
-     * @return true if the human player can say UNO, false otherwise
+     * @return true if the human is allowed to call "UNO"; false otherwise
      */
     public boolean isHumanCanSayONE() {
         return humanCanSayONE;
     }
 
     /**
-     * Gets whether the human player can say UNO to the machine.
-     *
-     * @return true if the human player can say UNO to the machine, false otherwise
+     * @return true if the human can call "UNO" on the machine; false otherwise
      */
     public boolean isHumanCanSayONEToMachine() {
         return humanCanSayONEToMachine;
     }
 
     /**
-     * Gets whether the machine has said UNO.
-     *
-     * @return true if the machine has said UNO, false otherwise
+     * @return true if the machine has called "UNO"; false otherwise
      */
     public boolean isMachineSayOne() {
         return machineSayOne;
     }
 
     /**
-     * Gets whether the human player can play.
-     *
-     * @return true if the human player can play, false otherwise
+     * @return true if the human is currently allowed to play; false otherwise
      */
     public boolean isPlayHuman() {
         return playHuman;
     }
 
     /**
-     * Sets whether the UNO thread is running.
+     * Enables or disables the UNO monitoring thread and forwards the state to it if present.
      *
-     * @param runningOneThread true if the UNO thread is running, false otherwise
+     * @param runningOneThread true to keep it running; false to stop
      */
     public void setRunningOneThread(boolean runningOneThread) {
         this.runningOneThread = runningOneThread;
@@ -492,9 +552,9 @@ public class GameUnoController {
     }
 
     /**
-     * Sets whether the play machine thread is running.
+     * Enables or disables the machine play thread and forwards the state to it if present.
      *
-     * @param runningPlayMachineThread true if the play machine thread is running, false otherwise
+     * @param runningPlayMachineThread true to keep it running; false to stop
      */
     public void setRunningPlayMachineThread(boolean runningPlayMachineThread) {
         this.runningPlayMachineThread = runningPlayMachineThread;
@@ -504,14 +564,17 @@ public class GameUnoController {
     }
 
     /**
-     * Gets whether the UNO thread is running.
-     *
-     * @return true if the UNO thread is running, false otherwise
+     * @return true if the UNO monitoring thread is marked as running; false otherwise
      */
     public boolean isRunningOneThread() {
         return runningOneThread;
     }
 
+    /**
+     * Updates the "turn" label with the current player and color on the table.
+     *
+     * @throws GameException.EmptyTableException if the table color cannot be obtained
+     */
     private void updateTurnLabel() throws GameException.EmptyTableException {
         String turn = isHumanTurn ? "humano" : "máquina";
         String color = table.getColorOnTheTable();
@@ -520,6 +583,9 @@ public class GameUnoController {
         });
     }
 
+    /**
+     * Schedules a UI refresh of both hands and the turn label on the JavaFX thread.
+     */
     public void refreshGameView() {
         Platform.runLater(() -> {
             try {
@@ -536,32 +602,10 @@ public class GameUnoController {
         });
     }
 
-    private void applyHoverEffect(ImageView button) {
-        ScaleTransition shrink = new ScaleTransition(Duration.millis(150), button);
-        shrink.setToX(0.9);
-        shrink.setToY(0.9);
-
-        ScaleTransition grow = new ScaleTransition(Duration.millis(150), button);
-        grow.setToX(1.0);
-        grow.setToY(1.0);
-
-        button.setOnMouseEntered(e -> shrink.playFromStart());
-        button.setOnMouseExited(e -> grow.playFromStart());
-    }
-
-    private void applyHoverEffectCards(Rectangle card) {
-        ScaleTransition shrink = new ScaleTransition(Duration.millis(150), card);
-        shrink.setToX(0.9);
-        shrink.setToY(0.9);
-
-        ScaleTransition grow = new ScaleTransition(Duration.millis(150), card);
-        grow.setToX(1.0);
-        grow.setToY(1.0);
-
-        card.setOnMouseEntered(e -> shrink.playFromStart());
-        card.setOnMouseExited(e -> grow.playFromStart());
-    }
-
+    /**
+     * Adjusts margins dynamically depending on whether the color picker is visible.
+     * This keeps the layout compact when the color picker is hidden.
+     */
     private void updateGridPaneMargin(){
         colorVBox.visibleProperty().addListener((obs, wasVisible, isNowVisible) -> {
             if (!isNowVisible) {
@@ -573,9 +617,11 @@ public class GameUnoController {
     }
 
     /**
-     * Handles the "Back" button action to show the previous set of cards.
+     * Shows the previous group of human cards in the carousel-like navigation.
      *
-     * @param event the action event
+     * @param event the mouse event
+     * @throws GameException.InvalidCardIndex if an invalid card index is accessed while redrawing
+     * @throws GameException.EmptyTableException if the table is unexpectedly empty
      */
     @FXML
     void onHandleBack(MouseEvent event) throws GameException.InvalidCardIndex, GameException.EmptyTableException {
@@ -585,11 +631,12 @@ public class GameUnoController {
         }
     }
 
-
     /**
-     * Handles the "Next" button action to show the next set of cards.
+     * Shows the next group of human cards in the carousel-like navigation.
      *
-     * @param event the action event
+     * @param event the mouse event
+     * @throws GameException.InvalidCardIndex if an invalid card index is accessed while redrawing
+     * @throws GameException.EmptyTableException if the table is unexpectedly empty
      */
     @FXML
     void onHandleNext(MouseEvent event) throws GameException.InvalidCardIndex, GameException.EmptyTableException {
@@ -599,13 +646,22 @@ public class GameUnoController {
         }
     }
 
+    /**
+     * Handles a color selection triggered by the color buttons.
+     * Applies the chosen color to the current table card and advances the turn.
+     *
+     * @param event the action event from the color button
+     * @throws GameException.EmptyTableException if the table is unexpectedly empty
+     * @throws GameException.IllegalCardColor if the selected color is invalid
+     */
     @FXML
-    private void onColorSelected(ActionEvent event) throws GameException.EmptyTableException, GameException.IllegalCardColor { // se activa al darle click a los botones de colores
+    private void onColorSelected(ActionEvent event) throws GameException.EmptyTableException, GameException.IllegalCardColor {
         Button source = (Button) event.getSource();
         String selectedColor = source.getText().toUpperCase();
         Card currentCard = table.getCurrentCardOnTheTable();
 
-        table.setColorOnTheTable(selectedColor); //cambia el color en la mesa y en todo el juego
+        // Update color on the table and on the current card
+        table.setColorOnTheTable(selectedColor);
         currentCard.setColor(selectedColor);
         hideColorPicker();
         setWaitingForColor(false);
@@ -619,17 +675,25 @@ public class GameUnoController {
     }
 
     /**
-     * Handles the action of taking a card.
+     * Handles the "take card" action. The human draws one card at most per turn.
+     * If the deck is empty, discards are recycled back into the deck.
      *
-     * @param event the action event
+     * @param event the mouse event
+     * @throws GameException.IllegalCardColor if an illegal color operation occurs
+     * @throws GameException.OutOfCardsInDeck if the deck unexpectedly has no cards to draw
+     * @throws GameException.NullCardException if a null card is encountered
+     * @throws GameException.InvalidCardIndex if a hand index is invalid
+     * @throws GameException.EmptyTableException if the table is unexpectedly empty
      */
     @FXML
     void onHandleTakeCard(MouseEvent event) throws GameException.IllegalCardColor, GameException.OutOfCardsInDeck, GameException.NullCardException, GameException.InvalidCardIndex, GameException.EmptyTableException {
-        if (!isHumanTurn) return; // solo si es turno humano
-        if (deckButton.isDisable()) return; // ya comio
+        // Only allow if it's the human's turn, not disabled, and not waiting for a wild color
+        if (!isHumanTurn) return;
+        if (deckButton.isDisable()) return;
         if (waitingForColor) return;
 
         if (deck.isEmpty()) {
+            // Recycle discards back into the deck; wild/+4 reset to black when requested
             List<Card> discards = table.collectDiscardsExceptTop(true); // true = resets wild/ +4 to black
             deck.reloadFrom(discards);
         }
@@ -638,11 +702,23 @@ public class GameUnoController {
         humanPlayer.addCard(drawCard);
         printCardsHumanPlayer();
 
-        deckButton.setDisable(true); // solo puede robar 1 carta por turno
+        if (!gridPaneCardsPlayer.getChildren().isEmpty()) {
+            Node last = gridPaneCardsPlayer.getChildren()
+                    .get(gridPaneCardsPlayer.getChildren().size() - 1);
+            animations.cardAnimation(last);
+        }
+
+        // Only one draw per turn; then pass the turn
+        deckButton.setDisable(true);
         setHumanTurn(false);
         refreshGameView();
     }
 
+    /**
+     * Closes the current window.
+     *
+     * @param event the mouse event from the exit icon
+     */
     @FXML
     private void handleExitClick(MouseEvent event) {
         Stage currentStage = (Stage) ((ImageView) event.getSource()).getScene().getWindow();
@@ -650,9 +726,10 @@ public class GameUnoController {
     }
 
     /**
-     * Handles the action of saying "Uno".
+     * Handles the "UNO" action. Validates whether "UNO" can be called by the human
+     * or against the machine, and updates the label accordingly.
      *
-     * @param event the mouse event
+     * @param event the mouse event from the UNO button
      */
     @FXML
     void onHandleUno(MouseEvent event) {
