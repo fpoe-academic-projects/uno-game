@@ -9,14 +9,24 @@ import java.util.Collections;
 import java.util.Stack;
 
 /**
- * Represents a deck of Uno cards.
+ * Represents the Uno deck, including creation, shuffling, and card drawing.
+ *
+ * <p>The deck is backed by a {@link Stack} and initialized from {@link UnoEnum}
+ * resources, creating {@link Card} instances for each enumerated asset.</p>
+ *
+ * <h2>Thread-safety</h2>
+ * <p>This class is <em>not</em> thread-safe. If accessed from multiple threads,
+ * clients must provide their own synchronization.</p>
  */
 public class Deck implements Serializable {
     private static final long serialVersionUID = 1L;
     private Stack<Card> deckOfCards;
 
     /**
-     * Constructs a new deck of Uno cards and initializes it.
+     * Creates a new deck and fully initializes it from {@link UnoEnum} values.
+     * The deck is shuffled after creation.
+     *
+     * @throws GameException if any card resource cannot be created or validated
      */
     public Deck() throws GameException {
         deckOfCards = new Stack<>();
@@ -24,7 +34,11 @@ public class Deck implements Serializable {
     }
 
     /**
-     * Initializes the deck with cards based on the UnoEnum values.
+     * Scans all {@link UnoEnum} constants, filters valid card entries,
+     * creates {@link Card} objects, and pushes them onto the stack.
+     * Finally shuffles the deck.
+     *
+     * @throws GameException if a card has an invalid value/color or its image cannot be loaded
      */
     private void initializeDeck() throws GameException {
         for (UnoEnum cardEnum : UnoEnum.values()) {
@@ -42,9 +56,11 @@ public class Deck implements Serializable {
                 String color = getCardColor(cardEnum.name());
 
                 if (value == null) {
+                    // Keep string as-is (Spanish by design)
                     throw new GameException.IllegalCardValue("Valor inválido para: " + cardEnum.name());
                 }
                 if (color == null) {
+                    // Keep string as-is (Spanish by design)
                     throw new GameException.IllegalCardColor("Color inválido para: " + cardEnum.name());
                 }
 
@@ -55,6 +71,12 @@ public class Deck implements Serializable {
         Collections.shuffle(deckOfCards);
     }
 
+    /**
+     * Derives the logical Uno value from an enum constant name.
+     *
+     * @param name enum constant name (e.g., "GREEN_7", "SKIP_RED", "FOUR_WILD_DRAW")
+     * @return the card value (e.g., "7", "SKIP", "+4", "WILD"), or {@code null} if not recognized
+     */
     public static String getCardValue(String name) {
         if (name.endsWith("0")) return "0";
         if (name.endsWith("1")) return "1";
@@ -74,6 +96,12 @@ public class Deck implements Serializable {
         return null;
     }
 
+    /**
+     * Derives the Uno color from an enum constant name.
+     *
+     * @param name enum constant name
+     * @return one of "GREEN", "YELLOW", "BLUE", "RED", "BLACK" (for wild cards), or {@code null} if unknown
+     */
     public static String getCardColor(String name) {
         if (name.contains("GREEN")) return "GREEN";
         if (name.contains("YELLOW")) return "YELLOW";
@@ -84,9 +112,9 @@ public class Deck implements Serializable {
     }
 
     /**
-     * Takes a card from the top of the deck.
+     * Removes and returns the top card from the deck.
      *
-     * @return the card from the top of the deck
+     * @return the top {@link Card}
      * @throws GameException.OutOfCardsInDeck if the deck is empty
      */
     public Card takeCard() throws GameException.OutOfCardsInDeck {
@@ -96,6 +124,12 @@ public class Deck implements Serializable {
         return deckOfCards.pop();
     }
 
+    /**
+     * Reloads the deck from a list of cards (e.g., recycled discards) and shuffles it.
+     * If the argument is {@code null} or empty, the method does nothing.
+     *
+     * @param cards a list of cards to push back into the deck
+     */
     public void reloadFrom(java.util.List<Card> cards) {
         if (cards == null || cards.isEmpty()) return;
         deckOfCards.addAll(cards);
@@ -103,9 +137,9 @@ public class Deck implements Serializable {
     }
 
     /**
-     * Checks if the deck is empty.
+     * Indicates whether the deck has no cards left.
      *
-     * @return true if the deck is empty, false otherwise
+     * @return {@code true} if there are no cards in the deck; {@code false} otherwise
      */
     public boolean isEmpty() {
         return deckOfCards.isEmpty();

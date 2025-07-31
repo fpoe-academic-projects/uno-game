@@ -3,14 +3,30 @@ package org.example.unogame.model.unoenum;
 import java.io.Serializable;
 
 /**
- * Enum UnoEnum
+ * Enumerates all image asset keys used by the Uno game and resolves each to a
+ * classpath resource path.
  *
- * This enum represents the various file paths for the images used in the Uno game.
+ * <p>Each enum constant represents a single image file (icons, UI elements, and
+ * card faces). The stored path is the absolute, classpath-based location obtained
+ * by prefixing a shared base path to the relative file name.</p>
+ *
+ * <h2>Usage</h2>
+ * <pre>{@code
+ * // Load an image using the resolved classpath resource:
+ * Image img = new Image(getClass().getResource(UnoEnum.RED_5.getFilePath()).toString());
+ * }</pre>
+ *
+ * <h2>Notes</h2>
+ * <ul>
+ *   <li>The <em>base path</em> is {@code /org/example/unogame/} and is applied to all entries.</li>
+ *   <li>Numeric card assets follow the pattern {@code <digit>_<color>.png}.</li>
+ *   <li>Special cards (e.g., SKIP/RESERVE, wilds) have descriptive file names.</li>
+ * </ul>
  */
 public enum UnoEnum implements Serializable {
     FAVICON("favicon.png"),
     UNO("images/uno.png"),
-    BACKGROUND_UNO("images/background_uno.png"),
+    BACKGROUND_UNO("images/background_uno.gif"),
     BUTTON_UNO("images/button_uno.png"),
     CARD_UNO("cards-uno/card_uno.png"),
     DECK_OF_CARDS("cards-uno/deck_of_cards.png"),
@@ -69,22 +85,28 @@ public enum UnoEnum implements Serializable {
     RED_8("cards-uno/8_red.png"),
     RED_9("cards-uno/9_red.png");
 
-    private final String filePath;
+    /** Absolute classpath prefix applied to all asset file names. */
     private static final String PATH = "/org/example/unogame/";
 
+    /** Full classpath-resolved resource path for this asset. */
+    private final String filePath;
+
     /**
-     * Constructor for the UnoEnum enum.
+     * Associates the enum constant with its relative asset path and resolves it
+     * to an absolute classpath location by prefixing the shared base path.
      *
-     * @param filePath the file path of the image relative to the base directory
+     * @param filePath relative file path of the image within the project resources
      */
     UnoEnum(String filePath) {
         this.filePath = PATH + filePath;
     }
 
     /**
-     * Gets the full file path of the image.
+     * Returns the absolute classpath resource path for this asset.
      *
-     * @return the full file path of the image
+     * <p>This path is suitable for {@code getResource(...)} calls.</p>
+     *
+     * @return the absolute classpath path of the image resource
      */
     public String getFilePath() {
         return filePath;
