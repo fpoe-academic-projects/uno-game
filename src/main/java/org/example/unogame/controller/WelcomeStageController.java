@@ -116,14 +116,30 @@ public class WelcomeStageController {
         }
     }
 
+    /**
+     * Handles the click event on the "Continue" button.
+     * <p>
+     * This method attempts to deserialize a previously saved {@link GameUno} instance from disk.
+     * If successful, it loads the game into the main game stage and displays it. The current welcome
+     * window is then closed.
+     * </p>
+     *
+     * @param event the {@link MouseEvent} triggered by the user clicking the "Continue" button
+     * @throws IOException if there is an error during file input or stage loading
+     * @throws ClassNotFoundException if the class definition of the serialized object cannot be found
+     */
     @FXML
     private void handleContinueClicked(MouseEvent event) throws IOException, ClassNotFoundException {
         GameUno gameUno = (GameUno) serializableFileHandler.deserialize("uno_saved_game.ser");
+
         try {
             GameUnoStage stage = GameUnoStage.getInstance(gameUno);
             stage.getController().loadGameState();
             stage.show();
+
+            // Close the welcome stage after launching the game
             ((WelcomeStage) continueButton.getScene().getWindow()).close();
+
         } catch (IOException | GameException e) {
             e.printStackTrace();
         }

@@ -46,7 +46,6 @@ public class ThreadSingUNOMachine implements Runnable, Serializable {
     private boolean running = true;
 
 
-
     /**
      * Creates a new UNO-calling worker.
      *

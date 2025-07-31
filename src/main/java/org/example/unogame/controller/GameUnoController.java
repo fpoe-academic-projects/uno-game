@@ -79,8 +79,6 @@ public class GameUnoController {
     private static final String SAVE_FILE_PATH = "uno_saved_game.ser";
     private final ISerializableFileHandler fileHandler = new SerializableFileHandler();
 
-
-
     /**
      * Initializes the controller after FXML loading. Sets up the game model,
      * applies UI effects, displays the initial table card, and starts worker threads.
@@ -99,32 +97,54 @@ public class GameUnoController {
         }
     }
 
+    /**
+     * Sets the animation handler used for visual effects during gameplay.
+     *
+     * @param animations an implementation of {@link IAnimations} to manage game animations
+     */
     public void setAnimations(IAnimations animations) {
         this.animations = animations;
     }
 
+    /**
+     * Initializes the game session based on the provided {@link GameUno} object.
+     * <p>
+     * If the given game instance is {@code null}, a new game is created; otherwise,
+     * the previously saved game state is loaded.
+     * </p>
+     *
+     * @param game the game instance to initialize, or {@code null} to start a new game
+     * @throws GameException if there is an error during initialization
+     */
     public void initmatch(GameUno game) throws GameException {
-        if(game == null){
+        initialize();
+        if (game == null) {
             newGame();
-        }
-        else{
+        } else {
             loadGameState();
         }
     }
 
+    /**
+     * Starts a new game session by initializing all game components,
+     * starting background threads, and updating the visual UI.
+     *
+     * @throws GameException if there is an error retrieving the initial table card or during setup
+     */
     public void newGame() throws GameException {
         initVariables();
         this.gameUno.startGame();
         updateGridPaneMargin();
 
-        tableImageView.setImage(this.table.getCurrentCardOnTheTable().getImage()); // mostrar visualmente a carta inciial en la mesa
+        // Display the initial card on the table
+        tableImageView.setImage(this.table.getCurrentCardOnTheTable().getImage());
         refreshGameView();
 
         // Start machine behavior thread
         threadPlayMachine = new ThreadPlayMachine(this.table, this.machinePlayer, this.tableImageView, this, this.deck);
         threadPlayMachine.start();
 
-        // Start UNO monitoring thread
+        // Start UNO rule monitoring thread
         threadSingUNOMachine = new ThreadSingUNOMachine(
                 this.humanPlayer.getCardsPlayer(),
                 this.machinePlayer.getCardsPlayer(),
@@ -134,7 +154,7 @@ public class GameUnoController {
         Thread t = new Thread(threadSingUNOMachine, "ThreadSingUNO");
         t.start();
 
-        // Start win-condition monitoring thread
+        // Start win condition monitoring thread
         threadWinGame = new ThreadWinGame(
                 this.humanPlayer,
                 this.machinePlayer,
@@ -143,8 +163,8 @@ public class GameUnoController {
         );
         Thread winThread = new Thread(threadWinGame, "ThreadWinGame");
         winThread.start();
-
     }
+
     /**
      * Prepares game entities and default controller state before starting the match.
      *
@@ -160,7 +180,6 @@ public class GameUnoController {
         this.isHumanTurn = true;
         this.animations = new AnimationsAdapter();
     }
-
 
     /**
      * Renders the human player's visible cards and wires click handlers
@@ -332,6 +351,12 @@ public class GameUnoController {
         return false;
     }
 
+    /**
+     * Saves the current game state to a file using serialization.
+     * <p>
+     * If the save operation fails, an error message is printed to {@code stderr}.
+     * </p>
+     */
     public void saveGame() {
         SerializableFileHandler fileHandler = new SerializableFileHandler();
         try {
@@ -342,31 +367,28 @@ public class GameUnoController {
         }
     }
 
-
+    /**
+     * Loads a previously saved game state from file and reinitializes
+     * all necessary components including players, table, deck, and threads.
+     * <p>
+     * This method also updates the UI and starts necessary background threads
+     * after loading the game state.
+     * </p>
+     */
     public void loadGameState() {
         try {
             SerializableFileHandler handler = new SerializableFileHandler();
             GameUno loadedGame = (GameUno) handler.deserialize(SAVE_FILE_PATH);
             System.out.println("Juego cargado correctamente.");
 
-            // Reasignar estado cargado
-            /*if (loadedGame.getHumanPlayer() instanceof Player &&
-                    loadedGame.getMachinePlayer() instanceof Player) {
-
-                this.humanPlayer = loadedGame.getHumanPlayer();
-                this.machinePlayer = loadedGame.getMachinePlayer();
-            } else {
-                throw new IllegalStateException("Los jugadores no son instancias de Player.");
-            }*/
-
+            // Restore game state
             this.humanPlayer = loadedGame.getHumanPlayer();
             this.machinePlayer = loadedGame.getMachinePlayer();
             this.table = loadedGame.getTable();
             this.deck = loadedGame.getDeck();
-            this.gameUno = new GameUno(this.humanPlayer, this.machinePlayer,this.deck, this.table);
+            this.gameUno = new GameUno(this.humanPlayer, this.machinePlayer, this.deck, this.table);
 
-            // Reasignar los hilos deserializados
-            // Recrear hilos con los datos cargados y referencias actuales
+            // Reinitialize threads with updated references
             this.threadPlayMachine = new ThreadPlayMachine(
                     this.table,
                     this.machinePlayer,
@@ -376,65 +398,61 @@ public class GameUnoController {
             );
 
             this.threadSingUNOMachine = new ThreadSingUNOMachine(
-                    this.humanPlayer.getCardsPlayer(),         // cartas del jugador humano
-                    this.machinePlayer.getCardsPlayer(),        // cartas de la máquina
-                    this,                                 // el controlador
-                    this.threadPlayMachine                // el hilo de la máquina
+                    this.humanPlayer.getCardsPlayer(),
+                    this.machinePlayer.getCardsPlayer(),
+                    this,
+                    this.threadPlayMachine
             );
+
             this.threadWinGame = new ThreadWinGame(this.humanPlayer, this.machinePlayer, this.deck, this);
-
-
-
             this.threadWinGame.init(this);
 
-            // Iniciar los hilos
+            // Start background threads
             new Thread(threadPlayMachine, "ThreadPlayMachine").start();
             new Thread(threadSingUNOMachine, "ThreadSingUNOMachine").start();
             new Thread(threadWinGame, "ThreadWinGame").start();
 
-
             updateGameUI();
-
 
         } catch (IOException | ClassNotFoundException | GameException.ThreadInitializationException e) {
             System.err.println("Error al cargar el estado del juego: " + e.getMessage());
         }
     }
 
-
+    /**
+     * Updates the game user interface based on the current game state.
+     * <p>
+     * This includes refreshing the human player's hand, the back of the machine's cards,
+     * and the top card on the table. Exceptions are handled if the table is empty.
+     * </p>
+     */
     private void updateGameUI() {
-        // Mostrar cartas del jugador humano
         displayPlayerCards();
-
-        // Mostrar reverso de la carta de la máquina (cantidad de cartas boca abajo)
         updateMachineCardBack();
 
-        // Mostrar la carta superior en la mesa
         try {
-            Card topCard = table.getCurrentCardOnTheTable(); // puede lanzar excepción
+            Card topCard = table.getCurrentCardOnTheTable();
             updatePlayedCard(topCard);
             System.out.println("la carta es: " + topCard.getValue());
-            for(Card c: humanPlayer.getCardsPlayer()){
-                System.out.println("Valor " + c.getValue() );
+            for (Card c : humanPlayer.getCardsPlayer()) {
+                System.out.println("Valor " + c.getValue());
             }
         } catch (GameException.EmptyTableException e) {
-            System.err.println("No hay cartas sobre la mesa para mostrar."); // o dejarlo vacío
+            System.err.println("No hay cartas sobre la mesa para mostrar.");
         }
     }
 
-
-
-
+    /**
+     * Sets up a hook to automatically save the game when the application window is closed.
+     *
+     * @param stage the primary stage of the JavaFX application
+     */
     public void setupAutoSaveOnClose(Stage stage) {
         stage.setOnCloseRequest(event -> {
             saveGame();
             System.out.println("Juego guardado automáticamente al cerrar.");
         });
     }
-
-
-
-
 
     /**
      * Applies the effect of a special card and manages turn flow accordingly.
@@ -852,6 +870,8 @@ public class GameUnoController {
      */
     @FXML
     private void handleExitClick(MouseEvent event) {
+        saveGame();
+        System.out.println("Juego guardado automáticamente al cerrar.");
         Stage currentStage = (Stage) ((ImageView) event.getSource()).getScene().getWindow();
         currentStage.close();
     }
@@ -877,10 +897,19 @@ public class GameUnoController {
         }
     }
 
+    /**
+     * Displays all the cards in the human player's hand on the game board.
+     * <p>
+     * This method clears the current card grid and repopulates it with
+     * {@link ImageView} nodes representing each card.
+     * </p>
+     * <p><b>Note:</b> Card values and image paths are printed to the console for debugging purposes.</p>
+     */
     private void displayPlayerCards() {
-        for(Card c: humanPlayer.getCardsPlayer()){
-            System.out.println("Valor " + c.getValue() );
+        for (Card c : humanPlayer.getCardsPlayer()) {
+            System.out.println("Valor " + c.getValue());
         }
+
         gridPaneCardsPlayer.getChildren().clear();
         List<Card> playerCards = humanPlayer.getCardsPlayer();
 
@@ -888,24 +917,43 @@ public class GameUnoController {
             Card card = playerCards.get(i);
             Image image = new Image(card.getImagePath());
             System.out.println("ruta de la imagen: " + card.getImagePath());
+
             ImageView imageView = new ImageView(image);
             imageView.setFitHeight(120);
             imageView.setFitWidth(80);
+
             gridPaneCardsPlayer.add(imageView, i, 0);
         }
     }
 
+    /**
+     * Updates the table to display the most recently played card.
+     *
+     * @param topCard the card currently on top of the discard pile; if {@code null}, no update is performed
+     */
     private void updatePlayedCard(Card topCard) {
         if (topCard != null) {
-            tableImageView.setImage(new Image(getClass().getResourceAsStream("/org/example/unogame/cards-uno/" + topCard.getImageName())));
+            tableImageView.setImage(
+                    new Image(getClass().getResourceAsStream("/org/example/unogame/cards-uno/" + topCard.getImageName()))
+            );
         }
     }
 
+    /**
+     * Displays the back of the machine player's cards on the board.
+     * <p>
+     * This method visually represents the machine's hand by adding card backs
+     * to the corresponding {@link GridPane}, hiding the actual card faces.
+     * </p>
+     */
     private void updateMachineCardBack() {
         gridPaneCardsMachine.getChildren().clear();
-        int cardCount = machinePlayer.getCardsPlayer().size(); // Usa getCardsPlayer
+        int cardCount = machinePlayer.getCardsPlayer().size();
+
         for (int i = 0; i < cardCount; i++) {
-            ImageView backView = new ImageView(new Image(getClass().getResourceAsStream("/org/example/unogame/cards-uno/back.png")));
+            ImageView backView = new ImageView(
+                    new Image(getClass().getResourceAsStream("/org/example/unogame/cards-uno/back.png"))
+            );
             backView.setFitWidth(80);
             backView.setFitHeight(120);
             gridPaneCardsMachine.add(backView, i, 0);

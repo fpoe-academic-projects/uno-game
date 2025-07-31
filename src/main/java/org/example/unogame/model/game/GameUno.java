@@ -35,8 +35,6 @@ public class GameUno implements IGameUno, Serializable {
     private ThreadSingUNOMachine threadSingUNOMachine;
     private ThreadWinGame threadWinGame;
 
-
-
     /**
      * Constructs a new {@code GameUno} instance with the provided collaborators.
      *
@@ -51,8 +49,6 @@ public class GameUno implements IGameUno, Serializable {
         this.deck = deck;
         this.table = table;
     }
-
-
 
     /**
      * Starts the game by dealing the opening hands and placing the initial table card.
@@ -220,29 +216,65 @@ public class GameUno implements IGameUno, Serializable {
         return deck.isEmpty();
     }
 
+    /**
+     * Returns the current table associated with the game.
+     *
+     * @return the {@link Table} instance used in gameplay
+     */
     public Table getTable() {
         return table;
     }
 
+    /**
+     * Returns the deck of cards used in the game.
+     *
+     * @return the {@link Deck} instance containing the remaining cards
+     */
     public Deck getDeck() {
         return deck;
     }
+
+    /**
+     * Returns the human player participating in the game.
+     *
+     * @return the {@link Player} representing the human user
+     */
     public Player getHumanPlayer() {
         return humanPlayer;
     }
 
+    /**
+     * Returns the machine player (AI opponent) in the game.
+     *
+     * @return the {@link Player} representing the machine
+     */
     public Player getMachinePlayer() {
         return machinePlayer;
     }
 
+    /**
+     * Returns the thread responsible for the machine's automatic card play logic.
+     *
+     * @return the {@link ThreadPlayMachine} instance currently running
+     */
     public ThreadPlayMachine getThreadPlayMachine() {
         return threadPlayMachine;
     }
 
+    /**
+     * Returns the thread responsible for monitoring when UNO should be declared.
+     *
+     * @return the {@link ThreadSingUNOMachine} instance currently active
+     */
     public ThreadSingUNOMachine getThreadSingUNOMachine() {
         return threadSingUNOMachine;
     }
 
+    /**
+     * Returns the thread responsible for checking win conditions during gameplay.
+     *
+     * @return the {@link ThreadWinGame} instance currently running
+     */
     public ThreadWinGame getThreadWinGame() {
         return threadWinGame;
     }

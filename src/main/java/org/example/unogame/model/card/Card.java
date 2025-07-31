@@ -166,9 +166,17 @@ public class Card implements Serializable {
         this.color = color;
     }
 
+    /**
+     * Returns the classpath-based image path for this card.
+     * <p>
+     * The path points to the image inside the {@code /cards-uno/} directory, using
+     * the card's image file name as returned by {@link #getImageName()}.
+     * </p>
+     *
+     * @return a string representing the relative path to the card image resource
+     */
     public String getImagePath() {
         return "/org/example/unogame/cards-uno/" + getImageName();
     }
-
 
 }
