@@ -6,5 +6,9 @@ module org.example.unogame {
 
     opens org.example.unogame to javafx.fxml;
     opens org.example.unogame.controller to javafx.fxml;
+    opens org.example.unogame.view.Alert to javafx.fxml;
     exports org.example.unogame;
+    exports org.example.unogame.view.Alert;
+    exports org.example.unogame.model.machine.observers;
+    exports org.example.unogame.model.fileHanldlers;
 }
