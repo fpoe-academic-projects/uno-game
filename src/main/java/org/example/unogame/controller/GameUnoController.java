@@ -39,59 +39,139 @@ import javafx.util.Duration;
 /**
  * Controller for the Uno game screen. It coordinates user interactions,
  * machine actions, game rules enforcement, and UI updates.
+ * 
+ * <p>This controller manages the complete game flow including:</p>
+ * <ul>
+ *   <li>Player turn management</li>
+ *   <li>Card validation and play logic</li>
+ *   <li>Special card effects (WILD, +2, +4, SKIP, RESERVE)</li>
+ *   <li>UNO calling mechanics with timers</li>
+ *   <li>Game state persistence</li>
+ *   <li>Multi-threaded machine player behavior</li>
+ *   <li>Observer pattern for game events</li>
+ * </ul>
+ * 
+ * <p>The controller uses multiple threads to handle concurrent game events:</p>
+ * <ul>
+ *   <li>ThreadPlayMachine: Handles machine player decisions</li>
+ *   <li>ThreadSingUNOMachine: Monitors UNO calling opportunities</li>
+ *   <li>ThreadWinGame: Checks for win conditions</li>
+ * </ul>
+ * 
+ * @author Uno Game Team
+ * @version 1.0
+ * @since 2024
  */
 public class GameUnoController {
 
+    /** Grid pane for displaying machine player's cards */
     @FXML private GridPane gridPaneCardsMachine;
+    
+    /** Grid pane for displaying human player's cards */
     @FXML private GridPane gridPaneCardsPlayer;
+    
+    /** Image view for the current card on the table */
     @FXML private ImageView tableImageView;
+    
+    /** Vertical box containing color selection buttons */
     @FXML private VBox colorVBox;
+    
+    /** Exit button image view */
     @FXML private ImageView exitButton;
+    
+    /** Deck button image view for drawing cards */
     @FXML private ImageView deckButton;
+    
+    /** Next button image view for card navigation */
     @FXML private ImageView nextButton;
+    
+    /** Back button image view for card navigation */
     @FXML private ImageView backButton;
+    
+    /** UNO button image view for calling UNO */
     @FXML private ImageView unoButton;
 
+    /** Label displaying current turn and table color information */
     @FXML public Label turnLabel;
 
+    /** The human player instance */
     private Player humanPlayer;
+    
+    /** The machine player instance */
     private Player machinePlayer;
+    
+    /** The game deck containing all cards */
     private Deck deck;
+    
+    /** The game table where cards are played */
     private Table table;
+    
+    /** The main game logic controller */
     private GameUno gameUno;
+    
+    /** Temporary card reference for special operations */
     private Card card;
+    
+    /** Starting position for displaying human player cards in carousel view */
     private int posInitCardToShow;
+    
+    /** Animation controller for UI effects */
     private IAnimations animations;
+    
+    /** Flag indicating if it's currently the human player's turn */
     private volatile boolean isHumanTurn;
+    
+    /** Flag indicating if the system is waiting for color selection after WILD/+4 */
     private volatile boolean waitingForColor = false;
 
     // UNO calling state variables
+    /** Flag indicating if human player can call UNO */
     private boolean humanCanSayONE = true;
+    
+    /** Flag indicating if human player can call UNO against machine */
     private boolean humanCanSayONEToMachine = true;
+    
+    /** Flag indicating if machine has called UNO */
     private boolean machineSayOne = false;
+    
+    /** Flag indicating if human player is allowed to play */
     private boolean playHuman = true;
+    
+    /** Flag indicating if system is waiting for human to call UNO */
     private boolean waitingForHumanUNO = false;
+    
+    /** Flag indicating if system is waiting for human to call UNO against machine */
     private boolean waitingForHumanUNOAgainstMachine = false;
     
-    // Timer cancellation flag
+    /** Flag for canceling UNO timer */
     public volatile boolean cancelTimer = false;
     
-    // Timeline for UNO timer
+    /** Timeline for UNO countdown timer */
     private Timeline unoTimer;
 
     // Thread control variables
+    /** Flag controlling UNO monitoring thread execution */
     private boolean runningOneThread = true;
+    
+    /** Flag controlling machine play thread execution */
     private boolean runningPlayMachineThread = true;
 
+    /** Thread for machine UNO calling logic */
     private ThreadSingUNOMachine threadSingUNOMachine;
+    
+    /** Thread for machine player decision making */
     private ThreadPlayMachine threadPlayMachine;
+    
+    /** Thread for win condition monitoring */
     private ThreadWinGame threadWinGame;
     
-    // Observer pattern for game events
+    /** Observer pattern implementation for game events */
     private observable gameEvents = new observableClass();
     
-    // Serialization support
+    /** File path for game state persistence */
     private static final String SAVE_FILE_PATH = "uno_saved_game.ser";
+    
+    /** File handler for serialization operations */
     private final ISerializableFileHandler fileHandler = new SerializableFileHandler();
 
     /**
@@ -112,11 +192,23 @@ public class GameUnoController {
         }
     }
 
+    /**
+     * Sets the animation controller for UI effects.
+     *
+     * @param animations the animation controller to use
+     */
     public void setAnimations(IAnimations animations) {
         this.animations = animations;
     }
 
+    /**
+     * Initializes a new match or loads an existing game state.
+     * 
+     * @param game the game instance to initialize with, or null for new game
+     * @throws GameException if game initialization fails
+     */
     public void initmatch(GameUno game) throws GameException {
+        initialize();
         if(game == null){
             newGame();
         }
@@ -125,6 +217,11 @@ public class GameUnoController {
         }
     }
 
+    /**
+     * Starts a new game by initializing all game components and starting worker threads.
+     * 
+     * @throws GameException if game initialization fails
+     */
     public void newGame() throws GameException {
         initVariables();
         this.gameUno.startGame();
@@ -347,6 +444,10 @@ public class GameUnoController {
         return false;
     }
 
+    /**
+     * Saves the current game state to a file for later restoration.
+     * Uses serialization to persist all game objects.
+     */
     public void saveGame() {
         SerializableFileHandler fileHandler = new SerializableFileHandler();
         try {
@@ -357,6 +458,10 @@ public class GameUnoController {
         }
     }
 
+    /**
+     * Loads a previously saved game state from file and restores all game components.
+     * Recreates worker threads with the loaded state.
+     */
     public void loadGameState() {
         try {
             SerializableFileHandler handler = new SerializableFileHandler();
@@ -400,6 +505,10 @@ public class GameUnoController {
         }
     }
 
+    /**
+     * Updates the game UI to reflect the current state after loading a saved game.
+     * Displays player cards, machine card backs, and the current table card.
+     */
     private void updateGameUI() {
         // Mostrar cartas del jugador humano
         displayPlayerCards();
@@ -420,6 +529,11 @@ public class GameUnoController {
         }
     }
 
+    /**
+     * Sets up automatic game saving when the window is closed.
+     * 
+     * @param stage the stage to monitor for close events
+     */
     public void setupAutoSaveOnClose(Stage stage) {
         stage.setOnCloseRequest(event -> {
             saveGame();
@@ -875,6 +989,8 @@ public class GameUnoController {
      */
     @FXML
     private void handleExitClick(MouseEvent event) {
+        saveGame();
+        System.out.println("Juego guardado automáticamente al cerrar.");
         Stage currentStage = (Stage) ((ImageView) event.getSource()).getScene().getWindow();
         currentStage.close();
     }
@@ -1050,6 +1166,10 @@ public class GameUnoController {
         });
     }
 
+    /**
+     * Displays the human player's cards in the UI grid.
+     * This method is used when loading a saved game state.
+     */
     private void displayPlayerCards() {
         for(Card c: humanPlayer.getCardsPlayer()){
             System.out.println("Valor " + c.getValue() );
@@ -1068,12 +1188,21 @@ public class GameUnoController {
         }
     }
 
+    /**
+     * Updates the table image view to show the current top card.
+     * 
+     * @param topCard the card to display on the table
+     */
     private void updatePlayedCard(Card topCard) {
         if (topCard != null) {
             tableImageView.setImage(new javafx.scene.image.Image(getClass().getResourceAsStream("/org/example/unogame/cards-uno/" + topCard.getImageName())));
         }
     }
 
+    /**
+     * Updates the machine player's card display to show the correct number of back cards.
+     * This method is used when loading a saved game state.
+     */
     private void updateMachineCardBack() {
         gridPaneCardsMachine.getChildren().clear();
         int cardCount = machinePlayer.getCardsPlayer().size();
