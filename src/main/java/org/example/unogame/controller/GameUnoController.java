@@ -1,8 +1,8 @@
 package org.example.unogame.controller;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.io.IOException;
 
 import org.example.unogame.model.card.Card;
 import org.example.unogame.model.deck.Deck;
@@ -18,6 +18,8 @@ import org.example.unogame.model.machine.observers.observableClass;
 import org.example.unogame.model.player.Player;
 import org.example.unogame.model.table.Table;
 
+import javafx.animation.KeyFrame;
+import javafx.animation.Timeline;
 import javafx.application.Platform;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
@@ -32,8 +34,6 @@ import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.scene.shape.Rectangle;
 import javafx.stage.Stage;
-import javafx.animation.Timeline;
-import javafx.animation.KeyFrame;
 import javafx.util.Duration;
 
 /**
@@ -983,6 +983,11 @@ public class GameUnoController {
         cancelTimer = false; // Reset cancellation flag
         final int[] countdown = {seconds};
         
+        // Verificar si ya se canceló antes de empezar
+        if (cancelTimer) {
+            return;
+        }
+        
         unoTimer = new Timeline();
         unoTimer.getKeyFrames().add(
             new KeyFrame(Duration.seconds(1), event -> {
@@ -992,7 +997,7 @@ public class GameUnoController {
                 }
                 
                 if (countdown[0] > 0) {
-                    setTurnLabel("¡Canta UNO! Tiempo restante: " + countdown[0] + " segundos");
+                    setTurnLabel("¡Canta UNO!");
                     countdown[0]--;
                 } else {
                     // Timer finished
@@ -1014,6 +1019,7 @@ public class GameUnoController {
         cancelTimer = true;
         if (unoTimer != null) {
             unoTimer.stop();
+            unoTimer = null; // Limpiar referencia
         }
     }
     
@@ -1037,7 +1043,7 @@ public class GameUnoController {
 
         Platform.runLater(() -> {
             // actualiza el turno y el label para mostrar la penalización - MAQUINA
-            setTurnLabel("¡Penalización! Máquina toma una carta por no cantar UNO");
+            setTurnLabel("¡Penalización!");
             
             // mostrar una nueva carta
             refreshGameView();

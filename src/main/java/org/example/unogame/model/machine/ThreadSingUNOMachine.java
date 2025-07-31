@@ -85,8 +85,11 @@ public class ThreadSingUNOMachine implements Runnable, observer, Serializable {
     public void run() {
         while (running) {
             try {
-                // Randomized delay to simulate reaction time
-                Thread.sleep((long) (Math.random() * 5000));
+                // Randomized delay to simulate reaction time (min 2s, max 4s)
+                long minDelay = 2000; // 2 segundos mínimo
+                long maxDelay = 4000; // 4 segundos máximo
+                long randomDelay = minDelay + (long) (Math.random() * (maxDelay - minDelay));
+                Thread.sleep(randomDelay);
             } catch (InterruptedException e) {
                 try {
                     // Preserve original behavior: wrap and rethrow as unchecked to terminate
@@ -215,6 +218,19 @@ public class ThreadSingUNOMachine implements Runnable, observer, Serializable {
                 if (machineCanSayOneToPlayer) {
                     gameUnoController.setTurnLabel("¡Tienes 1 carta!");
                     
+                    // Pequeña pausa para que se vea el mensaje antes del timer
+                    try {
+                        Thread.sleep(1000); // 1 segundo de pausa
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                        return;
+                    }
+                    
+                    // Verificar si ya se canceló el timer (humano ya cantó UNO)
+                    if (gameUnoController.cancelTimer) {
+                        return;
+                    }
+                    
                     try {
                         gameUnoController.showUNOTimer(5);
                     } catch (Exception e) {
@@ -238,10 +254,24 @@ public class ThreadSingUNOMachine implements Runnable, observer, Serializable {
             case "MACHINE_HAS_ONE_CARD":
                 // Start timer for human to say UNO against machine
                 if (machineCanSayOne && gameUnoController.isHumanCanSayONEToMachine()) {
+                    // Mostrar mensaje inmediatamente
                     gameUnoController.setTurnLabel("¡La máquina tiene 1 carta!");
                     
+                    // Pequeña pausa para que se vea el mensaje antes del timer
                     try {
-                        gameUnoController.showUNOTimer(5);
+                        Thread.sleep(1000); // 1 segundo de pausa
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                        return;
+                    }
+                    
+                    // Verificar si ya se canceló el timer (humano ya cantó UNO)
+                    if (gameUnoController.cancelTimer) {
+                        return;
+                    }
+                    
+                    try {
+                        gameUnoController.showUNOTimer(2);
                     } catch (Exception e) {
                         System.err.println("Error al mostrar timer UNO contra máquina: " + e.getMessage());
                     }
