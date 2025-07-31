@@ -8,7 +8,6 @@ Mini Project #4: UNO Game Development of the classic UNO card game for a human p
 | ---------- | ------ |
 | Julieta Arteta | 2240325 |
 | Manuela Martinez |     2375458   |
-| Juan David Salazar | 2344293           |
 | Valeria Zamudio | 2415210           |
 
 Asignatura: Fundamentos de Programación Orientada a Eventos - 2025-1 
