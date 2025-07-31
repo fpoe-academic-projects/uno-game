@@ -1,0 +1,12 @@
+org.example.unogame
+org.example.unogame.controller
+org.example.unogame.model.card
+org.example.unogame.model.deck
+org.example.unogame.model.exception
+org.example.unogame.model.fileHandlers
+org.example.unogame.model.game
+org.example.unogame.model.machine
+org.example.unogame.model.player
+org.example.unogame.model.table
+org.example.unogame.model.unoenum
+org.example.unogame.view
