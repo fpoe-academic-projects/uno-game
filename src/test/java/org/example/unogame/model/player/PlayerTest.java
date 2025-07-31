@@ -1,6 +1,7 @@
 package org.example.unogame.model.player;
 
 import org.example.unogame.model.card.Card;
+import org.example.unogame.model.exception.GameException;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -8,7 +9,7 @@ import static org.junit.jupiter.api.Assertions.*;
 class PlayerTest {
 
     @Test
-    void testAddCard_addsCardToPlayerHand() {
+    void testAddCard_addsCardToPlayerHand() throws GameException.NullCardException {
         Player player = new Player("Human");
         Card card = new Card("7", "BLUE");
 

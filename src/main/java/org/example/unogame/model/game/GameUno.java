@@ -3,8 +3,14 @@ package org.example.unogame.model.game;
 import org.example.unogame.model.card.Card;
 import org.example.unogame.model.deck.Deck;
 import org.example.unogame.model.exception.GameException;
+import org.example.unogame.model.machine.ThreadPlayMachine;
+import org.example.unogame.model.machine.ThreadSingUNOMachine;
+import org.example.unogame.model.machine.ThreadWinGame;
+import org.example.unogame.model.player.IPlayer;
 import org.example.unogame.model.player.Player;
 import org.example.unogame.model.table.Table;
+
+import java.io.Serializable;
 
 /**
  * Core model for an Uno match.
@@ -17,12 +23,19 @@ import org.example.unogame.model.table.Table;
  * <p>This class is <em>not</em> thread-safe. If accessed concurrently, callers
  * must apply external synchronization.</p>
  */
-public class GameUno implements IGameUno {
+public class GameUno implements IGameUno, Serializable {
 
-    private Player humanPlayer;
-    private Player machinePlayer;
+    //private Player humanPlayer;
+    //private Player machinePlayer;
     private Deck deck;
     private Table table;
+    private Player humanPlayer;
+    private Player machinePlayer;
+    private ThreadPlayMachine threadPlayMachine;
+    private ThreadSingUNOMachine threadSingUNOMachine;
+    private ThreadWinGame threadWinGame;
+
+
 
     /**
      * Constructs a new {@code GameUno} instance with the provided collaborators.
@@ -38,6 +51,8 @@ public class GameUno implements IGameUno {
         this.deck = deck;
         this.table = table;
     }
+
+
 
     /**
      * Starts the game by dealing the opening hands and placing the initial table card.
@@ -204,4 +219,32 @@ public class GameUno implements IGameUno {
     public Boolean isGameOver() {
         return deck.isEmpty();
     }
+
+    public Table getTable() {
+        return table;
+    }
+
+    public Deck getDeck() {
+        return deck;
+    }
+    public Player getHumanPlayer() {
+        return humanPlayer;
+    }
+
+    public Player getMachinePlayer() {
+        return machinePlayer;
+    }
+
+    public ThreadPlayMachine getThreadPlayMachine() {
+        return threadPlayMachine;
+    }
+
+    public ThreadSingUNOMachine getThreadSingUNOMachine() {
+        return threadSingUNOMachine;
+    }
+
+    public ThreadWinGame getThreadWinGame() {
+        return threadWinGame;
+    }
+
 }

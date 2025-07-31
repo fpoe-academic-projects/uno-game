@@ -3,6 +3,7 @@ package org.example.unogame.model.player;
 import org.example.unogame.model.card.Card;
 import org.example.unogame.model.exception.GameException;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 
 /**
@@ -15,7 +16,7 @@ import java.util.ArrayList;
  * <p>This class is <em>not</em> thread-safe. If accessed from multiple threads,
  * callers must apply external synchronization.</p>
  */
-public class Player implements IPlayer {
+public class Player implements IPlayer, Serializable {
     /** The player's current hand. The list is mutable and grows/shrinks during the game. */
     private ArrayList<Card> cardsPlayer;
 

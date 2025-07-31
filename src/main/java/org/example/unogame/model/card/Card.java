@@ -6,6 +6,8 @@ import javafx.scene.shape.Rectangle;
 import org.example.unogame.model.exception.GameException;
 import org.example.unogame.model.unoenum.UnoEnum;
 
+import java.io.Serializable;
+
 /**
  * Represents a single Uno card, including its value, color, image, and a
  * JavaFX {@link Rectangle} used for rendering in the UI.
@@ -13,12 +15,13 @@ import org.example.unogame.model.unoenum.UnoEnum;
  * <p>This class is UI-aware (it creates a rectangle with the image as a fill)
  * so that controllers can directly place it in JavaFX layouts.</p>
  */
-public class Card {
+public class Card implements Serializable {
     private String url;
     private String value;
     private String color;
-    private Image image;
-    private Rectangle cardRectangle;
+
+    private transient Image image;
+    private transient Rectangle cardRectangle;
 
     /** Minimal internal defaults for the on-screen card view. */
     private static final class View {
@@ -49,12 +52,7 @@ public class Card {
         this.value = value;
         this.color = color;
 
-        var resource = getClass().getResource(url);
-        if (resource == null) {
-            throw new GameException("Card image resource not found: " + url);
-        }
-        this.image = new Image(resource.toString());
-        this.cardRectangle = createCardRectangle();
+        loadImageResources();
     }
 
     /**
@@ -67,9 +65,19 @@ public class Card {
      * @param color the color for testing
      */
     public Card(String value, String color) {
-        this.image = null;
         this.value = value;
         this.color = color;
+        this.url = null;
+    }
+
+    private void loadImageResources() {
+        if (url != null) {
+            var resource = getClass().getResource(url);
+            if (resource != null) {
+                this.image = new Image(resource.toString());
+                this.cardRectangle = createCardRectangle();
+            }
+        }
     }
 
     /**
@@ -108,6 +116,9 @@ public class Card {
      * @return the JavaFX {@link Rectangle} representing this card on screen
      */
     public Rectangle getCard() {
+        if (cardRectangle == null) {
+            loadImageResources();
+        }
         return cardRectangle;
     }
 
@@ -115,12 +126,21 @@ public class Card {
      * @return the {@link Image} associated with this card, or {@code null} if not loaded
      */
     public Image getImage() {
+        if (image == null) {
+            loadImageResources();
+        }
         return image;
     }
 
     /**
      * @return the face value of the card
      */
+    public String getImageName() {
+        if (url == null) return null;
+        int lastSlash = url.lastIndexOf('/');
+        return lastSlash >= 0 ? url.substring(lastSlash + 1) : url;
+    }
+
     public String getValue() {
         return value;
     }
@@ -144,4 +164,9 @@ public class Card {
         }
         this.color = color;
     }
+
+    public String getImagePath() {
+        return "/org/example/unogame/cards-uno/" + getImageName();
+    }
+
 }

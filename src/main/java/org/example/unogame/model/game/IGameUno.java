@@ -4,10 +4,12 @@ import org.example.unogame.model.card.Card;
 import org.example.unogame.model.exception.GameException;
 import org.example.unogame.model.player.Player;
 
+import java.io.Serializable;
+
 /**
  * Interface representing the Uno game functionality.
  */
-public interface IGameUno {
+public interface IGameUno extends Serializable {
 
     /**
      * Starts the Uno game.

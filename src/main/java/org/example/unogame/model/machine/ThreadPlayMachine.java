@@ -1,18 +1,22 @@
 package org.example.unogame.model.machine;
 
-import javafx.application.Platform;
+import java.io.Serializable;
+import java.util.List;
+
 import org.example.unogame.controller.AnimationsAdapter;
 import org.example.unogame.controller.GameUnoController;
 import org.example.unogame.controller.IAnimations;
 import org.example.unogame.model.card.Card;
 import org.example.unogame.model.deck.Deck;
 import org.example.unogame.model.exception.GameException;
+import org.example.unogame.model.machine.observers.observable;
+import org.example.unogame.model.machine.observers.observableClass;
 import org.example.unogame.model.player.Player;
 import org.example.unogame.model.table.Table;
+import org.example.unogame.view.Alert.AlertBox;
 
+import javafx.application.Platform;
 import javafx.scene.image.ImageView;
-
-import java.util.List;
 
 /**
  * Background thread that automates the machine player's turns.
@@ -28,14 +32,19 @@ import java.util.List;
  *       or when the thread is interrupted during sleep.</li>
  * </ul>
  */
-public class ThreadPlayMachine extends Thread {
+public class ThreadPlayMachine extends Thread implements Serializable {
     private Table table;
     private Player machinePlayer;
-    private ImageView tableImageView;
-    private GameUnoController controller;
+    //private ImageView tableImageView;
+    //private GameUnoController controller;
     private Deck deck;
     private boolean running = true;
     private IAnimations animations = new AnimationsAdapter();
+    private observable observable = new observableClass();
+    private AlertBox alertBox = new AlertBox();
+
+    private transient ImageView tableImageView;
+    private transient GameUnoController controller;
 
     /**
      * Creates a machine-play thread bound to the current table, machine player, and UI.
@@ -117,6 +126,9 @@ public class ThreadPlayMachine extends Thread {
                 });
                 machinePlayer.removeCard(i);
                 cardPlayed = true;
+                
+                // Notificar a los observadores que la máquina jugó una carta
+                observable.notification("MACHINE_PLAYED_CARD");
 
                 if (controller.isSpecial(card.getValue())) {
                     controller.specialCard(card, machinePlayer, controller.getHumanPlayer());
@@ -161,5 +173,23 @@ public class ThreadPlayMachine extends Thread {
      */
     public void setRunning(boolean running) {
         this.running = running;
+    }
+    
+    /**
+     * Agrega un observador para ser notificado cuando la máquina juega una carta.
+     *
+     * @param observer el observador a agregar
+     */
+    public void addObserver(org.example.unogame.model.machine.observers.observer observer) {
+        observable.addObserver(observer);
+    }
+    
+    /**
+     * Elimina un observador de la lista de observadores.
+     *
+     * @param observer el observador a eliminar
+     */
+    public void removeObserver(org.example.unogame.model.machine.observers.observer observer) {
+        observable.deleteObserver(observer);
     }
 }

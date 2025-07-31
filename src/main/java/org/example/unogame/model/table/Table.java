@@ -3,6 +3,7 @@ package org.example.unogame.model.table;
 import org.example.unogame.model.card.Card;
 import org.example.unogame.model.exception.GameException;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -21,7 +22,7 @@ import java.util.List;
  * should still avoid holding locks for extended periods and keep UI updates off
  * the synchronized methods.</p>
  */
-public class Table {
+public class Table implements Serializable {
 
     /**
      * Runtime exception used when an unexpected condition is detected while

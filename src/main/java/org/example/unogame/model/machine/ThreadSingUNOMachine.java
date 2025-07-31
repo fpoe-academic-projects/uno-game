@@ -1,9 +1,12 @@
 package org.example.unogame.model.machine;
 
+import java.io.Serializable;
 import java.util.ArrayList;
+
 import org.example.unogame.controller.GameUnoController;
 import org.example.unogame.model.card.Card;
 import org.example.unogame.model.exception.GameException;
+import org.example.unogame.model.machine.observers.observer;
 
 /**
  * Background worker that simulates the machine's behavior for calling "UNO".
@@ -21,7 +24,9 @@ import org.example.unogame.model.exception.GameException;
  *   <li>UI updates are delegated to the controller; those should be performed on the JavaFX thread.</li>
  * </ul>
  */
-public class ThreadSingUNOMachine implements Runnable {
+public class ThreadSingUNOMachine implements Runnable, observer, Serializable {
+    private static final long serialVersionUID = 1L;
+
     /** Human player's hand reference. */
     private ArrayList<Card> cardsPlayer;
 
@@ -35,10 +40,10 @@ public class ThreadSingUNOMachine implements Runnable {
     private boolean machineCanSayOneToPlayer = true;
 
     /** Controller used to update UI state and flags. */
-    private GameUnoController gameUnoController;
+    private transient GameUnoController gameUnoController;
 
     /** Reference to the machine-turn thread (not used for control here, just held). */
-    private ThreadPlayMachine threadPlayMachine;
+    private transient ThreadPlayMachine threadPlayMachine;
 
     /** Main loop flag; set to {@code false} to stop this runnable. */
     private boolean running = true;
@@ -80,12 +85,12 @@ public class ThreadSingUNOMachine implements Runnable {
     public void run() {
         while (running) {
             try {
-                // Randomized delay to simulate reaction time (0–5 seconds)
+                // Randomized delay to simulate reaction time
                 Thread.sleep((long) (Math.random() * 5000));
             } catch (InterruptedException e) {
                 try {
                     // Preserve original behavior: wrap and rethrow as unchecked to terminate
-                    throw new GameException.ThreadInterruptedException("El hilo UNO fue interrumpido inesperadamente", e);
+                    throw new GameException.ThreadInterruptedException("El hilo UNO fue interrumpido", e);
                 } catch (GameException.ThreadInterruptedException ex) {
                     throw new RuntimeException(ex);
                 }
@@ -141,14 +146,11 @@ public class ThreadSingUNOMachine implements Runnable {
         }
 
         if (humanCardsCount == 1 && machineCanSayOneToPlayer) {
-            gameUnoController.setTurnLabel("¡UNO!");
-            gameUnoController.setHumanCanSayONE(false);
-            gameUnoController.setPlayHuman(false);
-            gameUnoController.setMachineSayOne(true);
-
-        } else if (machineCardsCount == 1 && machineCanSayOne) {
-            gameUnoController.setTurnLabel("¡UNO!");
-            gameUnoController.setHumanCanSayONEToMachine(false);
+            // Notificar evento usando Observer pattern
+            gameUnoController.notifyGameEvent("HUMAN_HAS_ONE_CARD");
+        } else if (machineCardsCount == 1 && machineCanSayOne && gameUnoController.isHumanCanSayONEToMachine()) {
+            // Notificar evento usando Observer pattern
+            gameUnoController.notifyGameEvent("MACHINE_HAS_ONE_CARD");
         }
     }
 
@@ -182,6 +184,74 @@ public class ThreadSingUNOMachine implements Runnable {
             synchronized (this) {
                 notifyAll();
             }
+        }
+    }
+    
+    /**
+     * Observer pattern implementation - reacts to game events.
+     *
+     * @param event the game event that occurred
+     */
+    @Override
+    public void update(String event) {
+        switch (event) {
+                    case "HUMAN_SAID_UNO":
+            // Human said UNO for themselves - disable UNO calling
+            gameUnoController.setHumanCanSayONE(false);
+            break;
+                
+                    case "HUMAN_SAID_UNO_TO_MACHINE":
+            // Human said UNO against machine - disable UNO calling and apply penalty
+            gameUnoController.setHumanCanSayONEToMachine(false);
+            try {
+                gameUnoController.penalizeMachineForNotCallingUNO();
+            } catch (Exception e) {
+                System.err.println("Error al aplicar penalización a la máquina: " + e.getMessage());
+            }
+            break;
+                
+            case "HUMAN_HAS_ONE_CARD":
+                // Start timer for human to say UNO
+                if (machineCanSayOneToPlayer) {
+                    gameUnoController.setTurnLabel("¡Tienes 1 carta!");
+                    
+                    try {
+                        gameUnoController.showUNOTimer(5);
+                    } catch (Exception e) {
+                        System.err.println("Error al mostrar timer UNO: " + e.getMessage());
+                    }
+                    
+                    // If timer wasn't cancelled, apply penalty
+                    if (!gameUnoController.cancelTimer) {
+                        gameUnoController.setTurnLabel("¡UNO! La máquina canta UNO");
+                        gameUnoController.setPlayHuman(false);
+                        
+                        try {
+                            gameUnoController.penalizeHumanForNotCallingUNO();
+                        } catch (Exception e) {
+                            System.err.println("Error al aplicar penalización UNO: " + e.getMessage());
+                        }
+                    }
+                }
+                break;
+                
+            case "MACHINE_HAS_ONE_CARD":
+                // Start timer for human to say UNO against machine
+                if (machineCanSayOne && gameUnoController.isHumanCanSayONEToMachine()) {
+                    gameUnoController.setTurnLabel("¡La máquina tiene 1 carta!");
+                    
+                    try {
+                        gameUnoController.showUNOTimer(5);
+                    } catch (Exception e) {
+                        System.err.println("Error al mostrar timer UNO contra máquina: " + e.getMessage());
+                    }
+                    
+                    // If timer wasn't cancelled, machine says UNO
+                    if (!gameUnoController.cancelTimer) {
+                        gameUnoController.setTurnLabel("¡UNO! La máquina canta UNO");
+                    }
+                }
+                break;
         }
     }
 }

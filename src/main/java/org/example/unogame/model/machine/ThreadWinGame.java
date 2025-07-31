@@ -1,5 +1,6 @@
 package org.example.unogame.model.machine;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 
 import org.example.unogame.controller.GameUnoController;
@@ -7,11 +8,10 @@ import org.example.unogame.model.card.Card;
 import org.example.unogame.model.deck.Deck;
 import org.example.unogame.model.exception.GameException;
 import org.example.unogame.model.player.Player;
+import org.example.unogame.view.Alert.AlertBox;
 import org.example.unogame.view.GameUnoStage;
 
 import javafx.application.Platform;
-import javafx.scene.control.Alert;
-import javafx.scene.control.Alert.AlertType;
 
 /**
  * Background worker that detects end-of-game conditions and announces the winner.
@@ -30,7 +30,7 @@ import javafx.scene.control.Alert.AlertType;
  *   <li>All UI interactions (closing the stage, showing alerts, changing labels) are executed on the JavaFX thread via {@link Platform#runLater(Runnable)}.</li>
  * </ul>
  */
-public class ThreadWinGame implements Runnable {
+public class ThreadWinGame implements Runnable, Serializable {
     /** Controller used to update flags and UI labels. */
     private GameUnoController gameUnoController;
 
@@ -45,6 +45,9 @@ public class ThreadWinGame implements Runnable {
 
     /** Shared deck reference to check depletion and compute scoring fallback. */
     private Deck deckOfCards;
+    
+    /** AlertBox for showing game result dialogs. */
+    private AlertBox alertBox = new AlertBox();
 
     /**
      * Creates a new end-of-game watcher.
@@ -58,6 +61,13 @@ public class ThreadWinGame implements Runnable {
         this.humanPlayer = humanPlayer;
         this.machinePlayer = machinePlayer;
         this.deckOfCards = deckOfCards;
+        this.gameUnoController = gameUnoController;
+    }
+
+    public void init(GameUnoController gameUnoController) throws GameException.ThreadInitializationException {
+        if (gameUnoController == null) {
+            throw new GameException.ThreadInitializationException("GameUnoController no puede ser null.");
+        }
         this.gameUnoController = gameUnoController;
     }
 
@@ -200,11 +210,7 @@ public class ThreadWinGame implements Runnable {
      * @param content the dialog content text
      */
     private void showAlert(String title, String header, String content) {
-        Alert alert = new Alert(AlertType.INFORMATION);
-        alert.setTitle(title);
-        alert.setHeaderText(header);
-        alert.setContentText(content);
-        alert.showAndWait();
+        alertBox.showConfirm(title, header, content);
     }
 
     /**
@@ -212,5 +218,7 @@ public class ThreadWinGame implements Runnable {
      */
     public void stopThread() {
         running = false;
+        System.out.println("[ThreadWinGame] Hilo detenido.");
     }
+
 }

@@ -1,32 +1,40 @@
 package org.example.unogame.controller;
 
-import javafx.geometry.Insets;
-import javafx.scene.Node;
-import javafx.scene.layout.HBox;
-import javafx.scene.shape.Rectangle;
+import java.util.ArrayList;
+import java.util.List;
+import java.io.IOException;
+
 import org.example.unogame.model.card.Card;
 import org.example.unogame.model.deck.Deck;
 import org.example.unogame.model.exception.GameException;
+import org.example.unogame.model.fileHanldlers.ISerializableFileHandler;
+import org.example.unogame.model.fileHanldlers.SerializableFileHandler;
 import org.example.unogame.model.game.GameUno;
 import org.example.unogame.model.machine.ThreadPlayMachine;
 import org.example.unogame.model.machine.ThreadSingUNOMachine;
 import org.example.unogame.model.machine.ThreadWinGame;
+import org.example.unogame.model.machine.observers.observable;
+import org.example.unogame.model.machine.observers.observableClass;
 import org.example.unogame.model.player.Player;
 import org.example.unogame.model.table.Table;
 
 import javafx.application.Platform;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
+import javafx.geometry.Insets;
+import javafx.scene.Node;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.image.ImageView;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.GridPane;
+import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
+import javafx.scene.shape.Rectangle;
 import javafx.stage.Stage;
-
-import java.util.ArrayList;
-import java.util.List;
+import javafx.animation.Timeline;
+import javafx.animation.KeyFrame;
+import javafx.util.Duration;
 
 /**
  * Controller for the Uno game screen. It coordinates user interactions,
@@ -62,6 +70,14 @@ public class GameUnoController {
     private boolean humanCanSayONEToMachine = true;
     private boolean machineSayOne = false;
     private boolean playHuman = true;
+    private boolean waitingForHumanUNO = false;
+    private boolean waitingForHumanUNOAgainstMachine = false;
+    
+    // Timer cancellation flag
+    public volatile boolean cancelTimer = false;
+    
+    // Timeline for UNO timer
+    private Timeline unoTimer;
 
     // Thread control variables
     private boolean runningOneThread = true;
@@ -70,6 +86,13 @@ public class GameUnoController {
     private ThreadSingUNOMachine threadSingUNOMachine;
     private ThreadPlayMachine threadPlayMachine;
     private ThreadWinGame threadWinGame;
+    
+    // Observer pattern for game events
+    private observable gameEvents = new observableClass();
+    
+    // Serialization support
+    private static final String SAVE_FILE_PATH = "uno_saved_game.ser";
+    private final ISerializableFileHandler fileHandler = new SerializableFileHandler();
 
     /**
      * Initializes the controller after FXML loading. Sets up the game model,
@@ -79,19 +102,35 @@ public class GameUnoController {
      */
     @FXML
     public void initialize() throws GameException {
+        // Apply hover effects to interactive UI elements
+        if (animations != null) {
+            animations.applyHoverEffect(exitButton);
+            animations.applyHoverEffect(deckButton);
+            animations.applyHoverEffect(nextButton);
+            animations.applyHoverEffect(backButton);
+            animations.applyHoverEffect(unoButton);
+        }
+    }
+
+    public void setAnimations(IAnimations animations) {
+        this.animations = animations;
+    }
+
+    public void initmatch(GameUno game) throws GameException {
+        if(game == null){
+            newGame();
+        }
+        else{
+            loadGameState();
+        }
+    }
+
+    public void newGame() throws GameException {
         initVariables();
         this.gameUno.startGame();
         updateGridPaneMargin();
 
-        // Apply hover effects to interactive UI elements
-        animations.applyHoverEffect(exitButton);
-        animations.applyHoverEffect(deckButton);
-        animations.applyHoverEffect(nextButton);
-        animations.applyHoverEffect(backButton);
-        animations.applyHoverEffect(unoButton);
-
-        // Show the initial card on the table
-        tableImageView.setImage(this.table.getCurrentCardOnTheTable().getImage());
+        tableImageView.setImage(this.table.getCurrentCardOnTheTable().getImage()); // mostrar visualmente a carta inciial en la mesa
         refreshGameView();
 
         // Start machine behavior thread
@@ -107,6 +146,9 @@ public class GameUnoController {
         );
         Thread t = new Thread(threadSingUNOMachine, "ThreadSingUNO");
         t.start();
+        
+        // Register ThreadSingUNOMachine as observer
+        addGameObserver(threadSingUNOMachine);
 
         // Start win-condition monitoring thread
         threadWinGame = new ThreadWinGame(
@@ -303,6 +345,86 @@ public class GameUnoController {
 
         refreshGameView();
         return false;
+    }
+
+    public void saveGame() {
+        SerializableFileHandler fileHandler = new SerializableFileHandler();
+        try {
+            fileHandler.serialize(SAVE_FILE_PATH, gameUno);
+            System.out.println("Juego guardado exitosamente.");
+        } catch (Exception e) {
+            System.err.println("Error al guardar el juego: " + e.getMessage());
+        }
+    }
+
+    public void loadGameState() {
+        try {
+            SerializableFileHandler handler = new SerializableFileHandler();
+            GameUno loadedGame = (GameUno) handler.deserialize(SAVE_FILE_PATH);
+            System.out.println("Juego cargado correctamente.");
+
+            this.humanPlayer = loadedGame.getHumanPlayer();
+            this.machinePlayer = loadedGame.getMachinePlayer();
+            this.table = loadedGame.getTable();
+            this.deck = loadedGame.getDeck();
+            this.gameUno = new GameUno(this.humanPlayer, this.machinePlayer,this.deck, this.table);
+
+            // Recrear hilos con los datos cargados y referencias actuales
+            this.threadPlayMachine = new ThreadPlayMachine(
+                    this.table,
+                    this.machinePlayer,
+                    this.tableImageView,
+                    this,
+                    this.deck
+            );
+
+            this.threadSingUNOMachine = new ThreadSingUNOMachine(
+                    this.humanPlayer.getCardsPlayer(),
+                    this.machinePlayer.getCardsPlayer(),
+                    this,
+                    this.threadPlayMachine
+            );
+            this.threadWinGame = new ThreadWinGame(this.humanPlayer, this.machinePlayer, this.deck, this);
+
+            this.threadWinGame.init(this);
+
+            // Iniciar los hilos
+            new Thread(threadPlayMachine, "ThreadPlayMachine").start();
+            new Thread(threadSingUNOMachine, "ThreadSingUNOMachine").start();
+            new Thread(threadWinGame, "ThreadWinGame").start();
+
+            updateGameUI();
+
+        } catch (IOException | ClassNotFoundException | GameException.ThreadInitializationException e) {
+            System.err.println("Error al cargar el estado del juego: " + e.getMessage());
+        }
+    }
+
+    private void updateGameUI() {
+        // Mostrar cartas del jugador humano
+        displayPlayerCards();
+
+        // Mostrar reverso de la carta de la máquina (cantidad de cartas boca abajo)
+        updateMachineCardBack();
+
+        // Mostrar la carta superior en la mesa
+        try {
+            Card topCard = table.getCurrentCardOnTheTable();
+            updatePlayedCard(topCard);
+            System.out.println("la carta es: " + topCard.getValue());
+            for(Card c: humanPlayer.getCardsPlayer()){
+                System.out.println("Valor " + c.getValue() );
+            }
+        } catch (GameException.EmptyTableException e) {
+            System.err.println("No hay cartas sobre la mesa para mostrar.");
+        }
+    }
+
+    public void setupAutoSaveOnClose(Stage stage) {
+        stage.setOnCloseRequest(event -> {
+            saveGame();
+            System.out.println("Juego guardado automáticamente al cerrar.");
+        });
     }
 
     /**
@@ -538,6 +660,38 @@ public class GameUnoController {
     public boolean isPlayHuman() {
         return playHuman;
     }
+    
+    /**
+     * Sets whether the system is waiting for the human to call UNO.
+     *
+     * @param waitingForHumanUNO true if waiting for human UNO call; false otherwise
+     */
+    public void setWaitingForHumanUNO(boolean waitingForHumanUNO) {
+        this.waitingForHumanUNO = waitingForHumanUNO;
+    }
+    
+    /**
+     * @return true if the system is waiting for the human to call UNO; false otherwise
+     */
+    public boolean isWaitingForHumanUNO() {
+        return waitingForHumanUNO;
+    }
+    
+    /**
+     * Sets whether the system is waiting for the human to call UNO against the machine.
+     *
+     * @param waitingForHumanUNOAgainstMachine true if waiting for human UNO call against machine; false otherwise
+     */
+    public void setWaitingForHumanUNOAgainstMachine(boolean waitingForHumanUNOAgainstMachine) {
+        this.waitingForHumanUNOAgainstMachine = waitingForHumanUNOAgainstMachine;
+    }
+    
+    /**
+     * @return true if the system is waiting for the human to call UNO against the machine; false otherwise
+     */
+    public boolean isWaitingForHumanUNOAgainstMachine() {
+        return waitingForHumanUNOAgainstMachine;
+    }
 
     /**
      * Enables or disables the UNO monitoring thread and forwards the state to it if present.
@@ -733,16 +887,195 @@ public class GameUnoController {
      */
     @FXML
     void onHandleUno(MouseEvent event) {
-        if (humanPlayer.getCardsPlayer().size() == 1 && humanCanSayONE) {
-            setTurnLabel("¡UNO!");
-            setHumanCanSayONE(false);
-            setMachineSayOne(false);
-        } else if (machinePlayer.getCardsPlayer().size() == 1 && humanCanSayONEToMachine) {
-            setTurnLabel("¡UNO!");
-            setHumanCanSayONEToMachine(false);
-            setMachineSayOne(false);
+        if (humanPlayer.getCardsPlayer().size() == 1) {
+            // Cancelar timer inmediatamente
+            cancelUNOTimer();
+            
+            // Notificar evento usando Observer pattern
+            gameEvents.notification("HUMAN_SAID_UNO");
+            setTurnLabel("¡UNO cantado correctamente!");
+        } else if (machinePlayer.getCardsPlayer().size() == 1) {
+            // Cancelar timer inmediatamente
+            cancelUNOTimer();
+            
+            // Notificar evento usando Observer pattern
+            gameEvents.notification("HUMAN_SAID_UNO_TO_MACHINE");
+            setTurnLabel("¡UNO cantado contra la máquina!");
         } else {
-            setTurnLabel("Cannot say UNO at this time");
+            setTurnLabel("No se puede cantar UNO en este momento");
+        }
+    }
+    
+    /**
+     * Registers an observer to listen for game events.
+     *
+     * @param observer the observer to register
+     */
+    public void addGameObserver(org.example.unogame.model.machine.observers.observer observer) {
+        gameEvents.addObserver(observer);
+    }
+    
+    /**
+     * Removes an observer from listening for game events.
+     *
+     * @param observer the observer to remove
+     */
+    public void removeGameObserver(org.example.unogame.model.machine.observers.observer observer) {
+        gameEvents.deleteObserver(observer);
+    }
+    
+    /**
+     * Notifies all observers of a game event.
+     *
+     * @param event the event to notify
+     */
+    public void notifyGameEvent(String event) {
+        gameEvents.notification(event);
+    }
+    
+    /**
+     * Penalizes the human player for not calling UNO on time by making them draw a card.
+     * This method is called when the machine successfully calls UNO against the human.
+     *
+     * @throws GameException.OutOfCardsInDeck if the deck is empty and cannot be reloaded
+     * @throws GameException.NullCardException if a null card is encountered
+     * @throws GameException.IllegalCardColor if an illegal color operation occurs
+     * @throws GameException.InvalidCardIndex if a hand index is invalid
+     * @throws GameException.EmptyTableException if the table is unexpectedly empty
+     */
+    public void penalizeHumanForNotCallingUNO() throws GameException.OutOfCardsInDeck, GameException.NullCardException, GameException.IllegalCardColor, GameException.InvalidCardIndex, GameException.EmptyTableException {
+        if (deck.isEmpty()) {
+            // recicla las cartas descartadas excepto la última
+            List<Card> discards = table.collectDiscardsExceptTop(true);
+            deck.reloadFrom(discards);
+        }
+        
+        Card penaltyCard = deck.takeCard();
+        humanPlayer.addCard(penaltyCard);
+
+        Platform.runLater(() -> {
+            try {
+                printCardsHumanPlayer();
+                
+                // actualiza el turno y el label para mostrar la penalización - JUGADOR
+                setTurnLabel("¡Penalización! Jugador toma una carta por no cantar UNO");
+                
+                // muestra una nueva carta
+                refreshGameView();
+            } catch (Exception e) {
+                System.err.println("Error al actualizar UI después de penalización: " + e.getMessage());
+            }
+        });
+    }
+    
+    /**
+     * Shows a countdown timer for UNO declaration.
+     * This method updates the turn label with a countdown from the specified seconds.
+     *
+     * @param seconds the number of seconds for the countdown
+     */
+    public void showUNOTimer(int seconds) {
+        // Cancel any existing timer
+        if (unoTimer != null) {
+            unoTimer.stop();
+        }
+        
+        cancelTimer = false; // Reset cancellation flag
+        final int[] countdown = {seconds};
+        
+        unoTimer = new Timeline();
+        unoTimer.getKeyFrames().add(
+            new KeyFrame(Duration.seconds(1), event -> {
+                if (cancelTimer) {
+                    unoTimer.stop();
+                    return;
+                }
+                
+                if (countdown[0] > 0) {
+                    setTurnLabel("¡Canta UNO! Tiempo restante: " + countdown[0] + " segundos");
+                    countdown[0]--;
+                } else {
+                    // Timer finished
+                    if (!cancelTimer) {
+                        setTurnLabel("¡Tiempo agotado!");
+                    }
+                    unoTimer.stop();
+                }
+            })
+        );
+        unoTimer.setCycleCount(seconds + 1); // +1 for the final "Tiempo agotado" message
+        unoTimer.play();
+    }
+    
+    /**
+     * Cancels the current UNO timer.
+     */
+    public void cancelUNOTimer() {
+        cancelTimer = true;
+        if (unoTimer != null) {
+            unoTimer.stop();
+        }
+    }
+    
+    /**
+     * Penalizes the machine player for not calling UNO on time by making it draw a card.
+     * This method is called when the human successfully calls UNO against the machine.
+     *
+     * @throws GameException.OutOfCardsInDeck if the deck is empty and cannot be reloaded
+     * @throws GameException.NullCardException if a null card is encountered
+     * @throws GameException.IllegalCardColor if an illegal color operation occurs
+     */
+    public void penalizeMachineForNotCallingUNO() throws GameException.OutOfCardsInDeck, GameException.NullCardException, GameException.IllegalCardColor {
+        if (deck.isEmpty()) {
+            // Recycle discards back into the deck
+            List<Card> discards = table.collectDiscardsExceptTop(true);
+            deck.reloadFrom(discards);
+        }
+        
+        Card penaltyCard = deck.takeCard();
+        machinePlayer.addCard(penaltyCard);
+
+        Platform.runLater(() -> {
+            // actualiza el turno y el label para mostrar la penalización - MAQUINA
+            setTurnLabel("¡Penalización! Máquina toma una carta por no cantar UNO");
+            
+            // mostrar una nueva carta
+            refreshGameView();
+        });
+    }
+
+    private void displayPlayerCards() {
+        for(Card c: humanPlayer.getCardsPlayer()){
+            System.out.println("Valor " + c.getValue() );
+        }
+        gridPaneCardsPlayer.getChildren().clear();
+        List<Card> playerCards = humanPlayer.getCardsPlayer();
+
+        for (int i = 0; i < playerCards.size(); i++) {
+            Card card = playerCards.get(i);
+            javafx.scene.image.Image image = new javafx.scene.image.Image(card.getImagePath());
+            System.out.println("ruta de la imagen: " + card.getImagePath());
+            ImageView imageView = new ImageView(image);
+            imageView.setFitHeight(120);
+            imageView.setFitWidth(80);
+            gridPaneCardsPlayer.add(imageView, i, 0);
+        }
+    }
+
+    private void updatePlayedCard(Card topCard) {
+        if (topCard != null) {
+            tableImageView.setImage(new javafx.scene.image.Image(getClass().getResourceAsStream("/org/example/unogame/cards-uno/" + topCard.getImageName())));
+        }
+    }
+
+    private void updateMachineCardBack() {
+        gridPaneCardsMachine.getChildren().clear();
+        int cardCount = machinePlayer.getCardsPlayer().size();
+        for (int i = 0; i < cardCount; i++) {
+            ImageView backView = new ImageView(new javafx.scene.image.Image(getClass().getResourceAsStream("/org/example/unogame/cards-uno/back.png")));
+            backView.setFitWidth(80);
+            backView.setFitHeight(120);
+            gridPaneCardsMachine.add(backView, i, 0);
         }
     }
 }

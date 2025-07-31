@@ -4,6 +4,10 @@ import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.stage.Stage;
+import org.example.unogame.controller.AnimationsAdapter;
+import org.example.unogame.controller.GameUnoController;
+import org.example.unogame.model.exception.GameException;
+import org.example.unogame.model.game.GameUno;
 
 import java.io.IOException;
 
@@ -13,12 +17,14 @@ import java.io.IOException;
  */
 public class GameUnoStage extends Stage {
 
+    private GameUnoController controller;
+
     /**
      * Constructs a new instance of GameUnoStage.
      *
      * @throws IOException if an error occurs while loading the FXML file for the game interface.
      */
-    public GameUnoStage() throws IOException {
+    public GameUnoStage(GameUno game) throws IOException, GameException {
         FXMLLoader loader = new FXMLLoader(getClass().getResource("/org/example/unogame/game-uno-view.fxml"));
         Parent root;
         try {
@@ -27,12 +33,27 @@ public class GameUnoStage extends Stage {
             // Re-throwing the caught IOException
             throw new IOException("Error while loading FXML file", e);
         }
+
+        this.controller = loader.getController();
+        this.controller.setAnimations(new AnimationsAdapter());
+        this.controller.initmatch(game);
+
         Scene scene = new Scene(root);
         // Configuring the stage
         setTitle("Uno Game"); // Sets the title of the stage
         setScene(scene); // Sets the scene for the stage
         setResizable(false); // Disallows resizing of the stage
         show(); // Displays the stage
+
+        controller.setupAutoSaveOnClose(this);
+    }
+
+    /**
+     * Gets the controller associated with this stage.
+     * @return the GameUnoController instance.
+     */
+    public GameUnoController getController() {
+        return controller;
     }
 
     /**
@@ -50,10 +71,10 @@ public class GameUnoStage extends Stage {
      * @return the singleton instance of GameUnoStage.
      * @throws IOException if an error occurs while creating the instance.
      */
-    public static GameUnoStage getInstance() throws IOException {
+    public static GameUnoStage getInstance(GameUno game) throws IOException, GameException {
         return GameUnoStageHolder.INSTANCE != null ?
                 GameUnoStageHolder.INSTANCE :
-                (GameUnoStageHolder.INSTANCE = new GameUnoStage());
+                (GameUnoStageHolder.INSTANCE = new GameUnoStage(game));
     }
 
     /**

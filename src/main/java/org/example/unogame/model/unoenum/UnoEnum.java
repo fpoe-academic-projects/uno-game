@@ -1,5 +1,7 @@
 package org.example.unogame.model.unoenum;
 
+import java.io.Serializable;
+
 /**
  * Enumerates all image asset keys used by the Uno game and resolves each to a
  * classpath resource path.
@@ -21,7 +23,7 @@ package org.example.unogame.model.unoenum;
  *   <li>Special cards (e.g., SKIP/RESERVE, wilds) have descriptive file names.</li>
  * </ul>
  */
-public enum UnoEnum {
+public enum UnoEnum implements Serializable {
     FAVICON("favicon.png"),
     UNO("images/uno.png"),
     BACKGROUND_UNO("images/background_uno.gif"),

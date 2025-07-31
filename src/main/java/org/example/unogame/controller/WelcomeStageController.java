@@ -6,6 +6,9 @@ import javafx.scene.effect.Glow;
 import javafx.scene.image.ImageView;
 import javafx.scene.input.MouseEvent;
 import javafx.util.Duration;
+import org.example.unogame.model.exception.GameException;
+import org.example.unogame.model.fileHanldlers.SerializableFileHandler;
+import org.example.unogame.model.game.GameUno;
 import org.example.unogame.view.GameUnoStage;
 import org.example.unogame.view.WelcomeStage;
 
@@ -31,6 +34,8 @@ public class WelcomeStageController {
     /** UNO logo used for animated effects on the welcome screen. */
     @FXML
     private ImageView unoLogo;
+
+    private SerializableFileHandler serializableFileHandler = new SerializableFileHandler();
 
     /** Animation helper to apply hover effects to controls. */
     private IAnimations animations = new AnimationsAdapter();
@@ -98,11 +103,27 @@ public class WelcomeStageController {
      */
     @FXML
     private void handlePlayClicked(MouseEvent event) {
+        GameUno gameUno = null;
         try {
-            GameUnoStage.getInstance();
+            GameUnoStage.getInstance(gameUno);
             ((WelcomeStage) playButton.getScene().getWindow()).close();
         } catch (IOException e) {
             // In a production app, use a logger and show a user-friendly message.
+            e.printStackTrace();
+        } catch (GameException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    @FXML
+    private void handleContinueClicked(MouseEvent event) throws IOException, ClassNotFoundException {
+        GameUno gameUno = (GameUno) serializableFileHandler.deserialize("uno_saved_game.ser");
+        try {
+            GameUnoStage stage = GameUnoStage.getInstance(gameUno);
+            stage.getController().loadGameState();
+            stage.show();
+            ((WelcomeStage) continueButton.getScene().getWindow()).close();
+        } catch (IOException | GameException e) {
             e.printStackTrace();
         }
     }

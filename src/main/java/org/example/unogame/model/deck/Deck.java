@@ -4,6 +4,7 @@ import org.example.unogame.model.exception.GameException;
 import org.example.unogame.model.unoenum.UnoEnum;
 import org.example.unogame.model.card.Card;
 
+import java.io.Serializable;
 import java.util.Collections;
 import java.util.Stack;
 
@@ -17,7 +18,10 @@ import java.util.Stack;
  * <p>This class is <em>not</em> thread-safe. If accessed from multiple threads,
  * clients must provide their own synchronization.</p>
  */
-public class Deck {
+public class Deck implements Serializable {
+
+    private static final long serialVersionUID = 1L;
+
     /** LIFO container for the deck; the top is at the end of the stack. */
     private Stack<Card> deckOfCards;
 
