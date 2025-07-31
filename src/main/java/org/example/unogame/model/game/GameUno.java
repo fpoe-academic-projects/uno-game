@@ -2,12 +2,20 @@ package org.example.unogame.model.game;
 
 import org.example.unogame.model.card.Card;
 import org.example.unogame.model.deck.Deck;
+import org.example.unogame.model.exception.GameException;
 import org.example.unogame.model.player.Player;
 import org.example.unogame.model.table.Table;
 
 /**
- * Represents a game of Uno.
- * This class manages the game logic and interactions between players, deck, and the table.
+ * Core model for an Uno match.
+ *
+ * <p>This class coordinates game setup, card draws, card plays, and simple
+ * queries for visible cards used by the UI layer. It references the human and
+ * machine players, the shared deck, and the table (discard pile/top card).</p>
+ *
+ * <h2>Thread-safety</h2>
+ * <p>This class is <em>not</em> thread-safe. If accessed concurrently, callers
+ * must apply external synchronization.</p>
  */
 public class GameUno implements IGameUno {
 
@@ -17,12 +25,12 @@ public class GameUno implements IGameUno {
     private Table table;
 
     /**
-     * Constructs a new GameUno instance.
+     * Constructs a new {@code GameUno} instance with the provided collaborators.
      *
-     * @param humanPlayer   The human player participating in the game.
-     * @param machinePlayer The machine player participating in the game.
-     * @param deck          The deck of cards used in the game.
-     * @param table         The table where cards are placed during the game.
+     * @param humanPlayer   the human player participating in the game
+     * @param machinePlayer the machine player participating in the game
+     * @param deck          the deck of cards shared by both players
+     * @param table         the table where cards are placed during the game
      */
     public GameUno(Player humanPlayer, Player machinePlayer, Deck deck, Table table) {
         this.humanPlayer = humanPlayer;
@@ -32,11 +40,18 @@ public class GameUno implements IGameUno {
     }
 
     /**
-     * Starts the Uno game by distributing cards to players.
-     * The human player and the machine player each receive 10 cards from the deck.
+     * Starts the game by dealing the opening hands and placing the initial table card.
+     *
+     * <ul>
+     *   <li>Deals <strong>5</strong> cards to the human player and <strong>5</strong> to the machine.</li>
+     *   <li>Draws cards from the deck until a numeric card is found (0–9) and places it on the table.</li>
+     * </ul>
+     *
+     * @throws GameException.OutOfCardsInDeck if the deck runs out of cards while dealing or selecting the initial card
+     * @throws GameException.NullCardException if a null card is unexpectedly encountered while dealing
      */
     @Override
-    public void startGame() {
+    public void startGame() throws GameException.OutOfCardsInDeck, GameException.NullCardException {
         for (int i = 0; i < 10; i++) {
             if (i < 5) {
                 humanPlayer.addCard(this.deck.takeCard());
@@ -45,13 +60,20 @@ public class GameUno implements IGameUno {
             }
         }
 
-        Card initialCard; // para poner una carta apenas empiece el juego, que sean solo numeros
+        // Select a numeric card to start the game (only digits 0–9)
+        Card initialCard;
         do {
-            initialCard = deck.takeCard(); // toma una carta del mazo
-        } while (!isNumberCard(initialCard)); // sigue buscando hasta encontrar una carta nuemrica
+            initialCard = deck.takeCard(); // draw from the deck
+        } while (!isNumberCard(initialCard)); // keep drawing until a numeric card is found
         table.addCardOnTheTable(initialCard);
     }
 
+    /**
+     * Checks whether the given card has a numeric face value (0–9).
+     *
+     * @param card the card to inspect
+     * @return true if the card value matches a single digit; false otherwise
+     */
     private boolean isNumberCard(Card card) {
         String value = card.getValue();
         return value != null && value.matches("[0-9]");
@@ -60,33 +82,42 @@ public class GameUno implements IGameUno {
     /**
      * Allows a player to draw a specified number of cards from the deck.
      *
-     * @param player        The player who will draw cards.
-     * @param numberOfCards The number of cards to draw.
+     * @param player        the player who will draw cards
+     * @param numberOfCards the number of cards to draw (must be non-negative)
+     * @throws GameException.OutOfCardsInDeck if the deck runs out of cards while drawing
+     * @throws GameException.NullCardException if a drawn card is unexpectedly null
      */
     @Override
-    public void eatCard(Player player, int numberOfCards) {
+    public void eatCard(Player player, int numberOfCards) throws GameException.OutOfCardsInDeck, GameException.NullCardException {
         for (int i = 0; i < numberOfCards; i++) {
             player.addCard(this.deck.takeCard());
         }
     }
 
     /**
-     * Places a card on the table during the game.
+     * Places a card onto the table (top of the discard pile).
      *
-     * @param card The card to be placed on the table.
+     * @param card the card to place
+     * @throws GameException.NullCardException if {@code card} is {@code null}
      */
     @Override
-    public void playCard(Card card) {
+    public void playCard(Card card) throws GameException.NullCardException {
+        if (card == null) {
+            // Keep original string in Spanish by design
+            throw new GameException.NullCardException("No se puede jugar una carta nula");
+        }
         this.table.addCardOnTheTable(card);
     }
 
     /**
-     * Handles the scenario when a player shouts "Uno", forcing the other player to draw a card.
+     * Handles the event where a player has shouted "UNO", causing the opponent to draw a penalty card.
      *
-     * @param playerWhoSang The player who shouted "Uno".
+     * @param playerWhoSang identifier of the player who shouted "UNO" (e.g., "HUMAN_PLAYER")
+     * @throws GameException.OutOfCardsInDeck if the deck has no cards to draw for the penalty
+     * @throws GameException.NullCardException if a drawn card is unexpectedly null
      */
     @Override
-    public void haveSungOne(String playerWhoSang) {
+    public void haveSungOne(String playerWhoSang) throws GameException.OutOfCardsInDeck, GameException.NullCardException {
         if (playerWhoSang.equals("HUMAN_PLAYER")) {
             machinePlayer.addCard(this.deck.takeCard());
         } else {
@@ -95,44 +126,82 @@ public class GameUno implements IGameUno {
     }
 
     /**
-     * Retrieves the current visible cards of the human player starting from a specific position.
+     * Returns up to four currently visible cards from the human player's hand,
+     * starting at {@code posInitCardToShow}. Intended for paginated UI display.
      *
-     * @param posInitCardToShow The initial position of the cards to show.
-     * @return An array of cards visible to the human player.
+     * <p>If the player has no cards or the starting position is beyond the hand size,
+     * an empty array is returned.</p>
+     *
+     * @param posInitCardToShow zero-based starting index of the visible window
+     * @return an array (length 0–4) of visible cards
+     * @throws GameException.InvalidCardIndex if an internal access computes an invalid index
      */
     @Override
-    public Card[] getCurrentVisibleCardsHumanPlayer(int posInitCardToShow) {
+    public Card[] getCurrentVisibleCardsHumanPlayer(int posInitCardToShow) throws GameException.InvalidCardIndex {
         int totalCards = this.humanPlayer.getCardsPlayer().size();
-        int numVisibleCards = Math.min(4, totalCards - posInitCardToShow);
-        Card[] cards = new Card[numVisibleCards];
 
+        // Nothing to show or the start index is beyond available cards
+        if (totalCards == 0 || posInitCardToShow >= totalCards) {
+            return new Card[0];
+        }
+
+        int numVisibleCards = Math.min(4, totalCards - posInitCardToShow);
+
+        // Defensive: ensure non-negative count
+        if (numVisibleCards <= 0) {
+            return new Card[0];
+        }
+
+        Card[] cards = new Card[numVisibleCards];
         for (int i = 0; i < numVisibleCards; i++) {
             cards[i] = this.humanPlayer.getCard(posInitCardToShow + i);
         }
-
-        return cards;
-    }
-
-    @Override
-    public Card[] getCurrentVisibleCardsMachinePlayer(int posInitCardToShow) {
-        int totalCards = this.machinePlayer.getCardsPlayer().size();
-        int numVisibleCards = Math.min(4, totalCards - posInitCardToShow);
-        Card[] cards = new Card[numVisibleCards];
-
-        for (int i = 0; i < numVisibleCards; i++) {
-            cards[i] = this.machinePlayer.getCard(posInitCardToShow + i);
-        }
-
         return cards;
     }
 
     /**
-     * Checks if the game is over.
+     * Returns up to four currently visible cards from the machine player's hand,
+     * starting at {@code posInitCardToShow}. Intended for paginated UI display.
      *
-     * @return True if the deck is empty, indicating the game is over; otherwise, false.
+     * <p>If the player has no cards or the starting position is beyond the hand size,
+     * an empty array is returned.</p>
+     *
+     * @param posInitCardToShow zero-based starting index of the visible window
+     * @return an array (length 0–4) of visible cards
+     * @throws GameException.InvalidCardIndex if an internal access computes an invalid index
+     */
+    @Override
+    public Card[] getCurrentVisibleCardsMachinePlayer(int posInitCardToShow) throws GameException.InvalidCardIndex {
+        int totalCards = this.machinePlayer.getCardsPlayer().size();
+
+        // Nothing to show or the start index is beyond available cards
+        if (totalCards == 0 || posInitCardToShow >= totalCards) {
+            return new Card[0];
+        }
+
+        int numVisibleCards = Math.min(4, totalCards - posInitCardToShow);
+
+        // Defensive: ensure non-negative count
+        if (numVisibleCards <= 0) {
+            return new Card[0];
+        }
+
+        Card[] cards = new Card[numVisibleCards];
+        for (int i = 0; i < numVisibleCards; i++) {
+            cards[i] = this.machinePlayer.getCard(posInitCardToShow + i);
+        }
+        return cards;
+    }
+
+    /**
+     * Indicates whether the game should be considered over.
+     *
+     * <p>Current rule: the game ends when the deck becomes empty.</p>
+     *
+     * @return {@code true} if the deck has no cards left; {@code false} otherwise
      */
     @Override
     public Boolean isGameOver() {
-        return null;
+        return deck.isEmpty();
     }
 }
