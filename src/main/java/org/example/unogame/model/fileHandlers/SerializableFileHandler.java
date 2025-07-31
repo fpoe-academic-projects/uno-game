@@ -1,4 +1,4 @@
-package org.example.unogame.model.fileHanldlers;
+package org.example.unogame.model.fileHandlers;
 
 import java.io.*;
 

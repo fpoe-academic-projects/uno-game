@@ -77,7 +77,7 @@ public class ThreadPlayMachine extends Thread implements Serializable {
                 try {
                     putCardOnTheTable();
                 } catch (GameException e) {
-                    System.err.println("Error durante jugada de máquina: " + e.getMessage());
+                    System.err.println("Error durante jugada de maquina: " + e.getMessage());
                 }
 
                 controller.refreshGameView();

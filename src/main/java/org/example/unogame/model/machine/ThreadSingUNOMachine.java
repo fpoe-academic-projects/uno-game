@@ -60,7 +60,7 @@ public class ThreadSingUNOMachine implements Runnable, Serializable {
             throws GameException.ThreadInitializationException {
         if (cardsPlayer == null || machineCardsPlayer == null || gameUnoController == null || threadPlayMachine == null) {
             // Keep original message (Spanish by design)
-            throw new GameException.ThreadInitializationException("UNO: Uno de los parámetros del constructor es null");
+            throw new GameException.ThreadInitializationException("UNO: Uno de los parametros del constructor es null");
         }
 
         this.cardsPlayer = cardsPlayer;

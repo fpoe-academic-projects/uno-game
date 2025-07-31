@@ -8,8 +8,8 @@ import javafx.scene.shape.Rectangle;
 import org.example.unogame.model.card.Card;
 import org.example.unogame.model.deck.Deck;
 import org.example.unogame.model.exception.GameException;
-import org.example.unogame.model.fileHanldlers.ISerializableFileHandler;
-import org.example.unogame.model.fileHanldlers.SerializableFileHandler;
+import org.example.unogame.model.fileHandlers.ISerializableFileHandler;
+import org.example.unogame.model.fileHandlers.SerializableFileHandler;
 import org.example.unogame.model.game.GameUno;
 import org.example.unogame.model.machine.ThreadPlayMachine;
 import org.example.unogame.model.machine.ThreadSingUNOMachine;
@@ -450,7 +450,7 @@ public class GameUnoController {
     public void setupAutoSaveOnClose(Stage stage) {
         stage.setOnCloseRequest(event -> {
             saveGame();
-            System.out.println("Juego guardado automáticamente al cerrar.");
+            System.out.println("Juego guardado automaticamente al cerrar.");
         });
     }
 
@@ -725,7 +725,7 @@ public class GameUnoController {
      * @throws GameException.EmptyTableException if the table color cannot be obtained
      */
     private void updateTurnLabel() throws GameException.EmptyTableException {
-        String turn = isHumanTurn ? "humano" : "máquina";
+        String turn = isHumanTurn ? "humano" : "maquina";
         String color = table.getColorOnTheTable();
         Platform.runLater(() -> {
             turnLabel.setText("Turno: " + turn + " | Color: " + color);
@@ -871,7 +871,7 @@ public class GameUnoController {
     @FXML
     private void handleExitClick(MouseEvent event) {
         saveGame();
-        System.out.println("Juego guardado automáticamente al cerrar.");
+        System.out.println("Juego guardado automaticamente al cerrar.");
         Stage currentStage = (Stage) ((ImageView) event.getSource()).getScene().getWindow();
         currentStage.close();
     }

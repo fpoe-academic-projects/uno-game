@@ -99,7 +99,7 @@ public class Table implements Serializable {
      * discards while keeping the active top card on the table.</p>
      *
      * @param resetWildToBlack if {@code true}, cards with value "WILD" or "+4" are reset to color "BLACK"
-     *                         before being returned (útil cuando se recicla el mazo).
+     *                         before being returned (util cuando se recicla el mazo).
      * @return a modifiable list containing the collected discards (may be empty)
      * @throws GameException.IllegalCardColor if resetting a card color is considered illegal
      * @throws TableRecycleException          if a null card is found among discards
@@ -124,7 +124,7 @@ public class Table implements Serializable {
                 Card card = discards.get(i);
                 if (card == null) {
                     // Keep message in Spanish by design
-                    throw new TableRecycleException("Se encontró una carta nula en el índice " + i + ".");
+                    throw new TableRecycleException("Se encontro una carta nula en el indice " + i + ".");
                 }
                 String value = card.getValue();
                 if ("WILD".equals(value) || "+4".equals(value)) {

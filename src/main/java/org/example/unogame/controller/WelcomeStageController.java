@@ -7,7 +7,7 @@ import javafx.scene.image.ImageView;
 import javafx.scene.input.MouseEvent;
 import javafx.util.Duration;
 import org.example.unogame.model.exception.GameException;
-import org.example.unogame.model.fileHanldlers.SerializableFileHandler;
+import org.example.unogame.model.fileHandlers.SerializableFileHandler;
 import org.example.unogame.model.game.GameUno;
 import org.example.unogame.view.GameUnoStage;
 import org.example.unogame.view.WelcomeStage;
@@ -52,7 +52,11 @@ public class WelcomeStageController {
         animations.applyHoverEffect(playButton);
         animations.applyHoverEffect(continueButton);
         applyLogoEffect();
+
+        
     }
+
+
 
     /**
      * Configures and starts the animated effects applied to the UNO logo:

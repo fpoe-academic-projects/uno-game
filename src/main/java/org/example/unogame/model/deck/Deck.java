@@ -57,11 +57,11 @@ public class Deck implements Serializable {
 
                 if (value == null) {
                     // Keep string as-is (Spanish by design)
-                    throw new GameException.IllegalCardValue("Valor inválido para: " + cardEnum.name());
+                    throw new GameException.IllegalCardValue("Valor invalido para: " + cardEnum.name());
                 }
                 if (color == null) {
                     // Keep string as-is (Spanish by design)
-                    throw new GameException.IllegalCardColor("Color inválido para: " + cardEnum.name());
+                    throw new GameException.IllegalCardColor("Color invalido para: " + cardEnum.name());
                 }
 
                 Card card = new Card(cardEnum.getFilePath(), value, color);

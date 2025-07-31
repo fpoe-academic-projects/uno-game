@@ -113,7 +113,7 @@ public class ThreadWinGame implements Runnable, Serializable {
 
             Platform.runLater(() -> {
                 GameUnoStage.deleteInstance();
-                showAlert("MAQUINA GANA", "Máquina tiene 0 cartas", "Máquina gana por quedarse sin cartas");
+                showAlert("MAQUINA GANA", "Maquina tiene 0 cartas", "Maquina gana por quedarse sin cartas");
             });
 
         } else if (deckOfCards.isEmpty()) {
@@ -123,7 +123,7 @@ public class ThreadWinGame implements Runnable, Serializable {
 
             try {
                 // Keep message in Spanish by design
-                throw new GameException.OutOfCardsInDeck("El mazo está vacío.");
+                throw new GameException.OutOfCardsInDeck("El mazo esta vacio.");
             } catch (GameException.OutOfCardsInDeck e) {
                 e.printStackTrace();
             }
@@ -135,13 +135,13 @@ public class ThreadWinGame implements Runnable, Serializable {
                 GameUnoStage.deleteInstance();
                 if (pointsMachine < pointsHuman) {
                     gameUnoController.setTurnLabel("Maquina gana");
-                    showAlert("Máquina gana",
-                            "PUNTAJE DEL JUGADOR: " + pointsHuman + "\nPUNTAJE DE LA MÁQUINA: " + pointsMachine,
-                            "La máquina gana por puntaje");
+                    showAlert("Maquina gana",
+                            "PUNTAJE DEL JUGADOR: " + pointsHuman + "\nPUNTAJE DE LA MAQUINA: " + pointsMachine,
+                            "La maquina gana por puntaje");
                 } else {
                     gameUnoController.setTurnLabel("Jugador gana");
                     showAlert("HAS GANADO :D!",
-                            "PUNTAJE DEL JUGADOR: " + pointsHuman + "\nPUNTAJE DE LA MÁQUINA: " + pointsMachine,
+                            "PUNTAJE DEL JUGADOR: " + pointsHuman + "\nPUNTAJE DE LA MAQUINA: " + pointsMachine,
                             "El jugador gana por puntaje");
                 }
             });

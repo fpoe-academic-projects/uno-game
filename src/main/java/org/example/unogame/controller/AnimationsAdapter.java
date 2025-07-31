@@ -48,7 +48,7 @@ public class AnimationsAdapter implements IAnimations {
     /**
      * Plays a minimal fade-in when showing/placing a card node.
      * <p>
-     * Sets the node's opacity to {@code 0}, then animates to {@code 1.0}
+     * Sets the nodes opacity to {@code 0}, then animates to {@code 1.0}
      * over ~200 milliseconds using a {@link FadeTransition}.
      *
      * @param node the JavaFX node to animate; must not be {@code null}
