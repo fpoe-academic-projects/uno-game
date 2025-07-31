@@ -90,12 +90,17 @@ public class GameUnoController {
     @FXML
     public void initialize() throws GameException {
         // Apply hover effects to interactive UI elements
-        animations.applyHoverEffect(exitButton);
-        animations.applyHoverEffect(deckButton);
-        animations.applyHoverEffect(nextButton);
-        animations.applyHoverEffect(backButton);
-        animations.applyHoverEffect(unoButton);
+        if (animations != null) {
+            animations.applyHoverEffect(exitButton);
+            animations.applyHoverEffect(deckButton);
+            animations.applyHoverEffect(nextButton);
+            animations.applyHoverEffect(backButton);
+            animations.applyHoverEffect(unoButton);
+        }
+    }
 
+    public void setAnimations(IAnimations animations) {
+        this.animations = animations;
     }
 
     public void initmatch(GameUno game) throws GameException {
@@ -155,6 +160,7 @@ public class GameUnoController {
         this.isHumanTurn = true;
         this.animations = new AnimationsAdapter();
     }
+
 
     /**
      * Renders the human player's visible cards and wires click handlers

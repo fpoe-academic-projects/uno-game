@@ -4,6 +4,7 @@ import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.stage.Stage;
+import org.example.unogame.controller.AnimationsAdapter;
 import org.example.unogame.controller.GameUnoController;
 import org.example.unogame.model.exception.GameException;
 import org.example.unogame.model.game.GameUno;
@@ -32,7 +33,8 @@ public class GameUnoStage extends Stage {
             throw new IOException("Error while loading FXML file", e);
         }
 
-        this.controller = loader.getController(); // <-- capturamos el controlador
+        this.controller = loader.getController(); //
+        this.controller.setAnimations(new AnimationsAdapter());
         this.controller.initmatch(game);
 
         Scene scene = new Scene(root);

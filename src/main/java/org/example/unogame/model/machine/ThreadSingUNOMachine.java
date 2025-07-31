@@ -37,17 +37,15 @@ public class ThreadSingUNOMachine implements Runnable, Serializable {
     private boolean machineCanSayOneToPlayer = true;
 
     /** Controller used to update UI state and flags. */
-    private GameUnoController gameUnoController;
+    private transient GameUnoController gameUnoController;
 
     /** Reference to the machine-turn thread (not used for control here, just held). */
-    private ThreadPlayMachine threadPlayMachine;
+    private transient ThreadPlayMachine threadPlayMachine;
 
     /** Main loop flag; set to {@code false} to stop this runnable. */
     private boolean running = true;
 
-    // Transient: se reinician manualmente con init()
-    private transient GameUnoController gameUnoController;
-    private transient ThreadPlayMachine threadPlayMachine;
+
 
     /**
      * Creates a new UNO-calling worker.
