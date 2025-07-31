@@ -2,31 +2,35 @@ package org.example.unogame.controller;
 
 import javafx.animation.ScaleTransition;
 import javafx.geometry.Insets;
+import javafx.scene.image.Image;
 import javafx.scene.layout.HBox;
 import javafx.scene.shape.Rectangle;
 import javafx.util.Duration;
 import org.example.unogame.model.card.Card;
 import org.example.unogame.model.deck.Deck;
 import org.example.unogame.model.exception.GameException;
+import org.example.unogame.model.fileHanldlers.ISerializableFileHandler;
+import org.example.unogame.model.fileHanldlers.SerializableFileHandler;
 import org.example.unogame.model.game.GameUno;
 import org.example.unogame.model.machine.ThreadPlayMachine;
 import org.example.unogame.model.machine.ThreadSingUNOMachine;
 import org.example.unogame.model.machine.ThreadWinGame;
 import org.example.unogame.model.player.Player;
 import org.example.unogame.model.table.Table;
-
 import javafx.application.Platform;
-import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
+import javafx.scene.input.MouseEvent;
+
+
+import javafx.event.ActionEvent;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.image.ImageView;
-import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
-import org.example.unogame.model.unoenum.UnoEnum;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -71,48 +75,63 @@ public class GameUnoController {
     private ThreadPlayMachine threadPlayMachine;
     private ThreadWinGame threadWinGame;
 
+    private static final String SAVE_FILE_PATH = "uno_saved_game.ser";
+    private final ISerializableFileHandler fileHandler = new SerializableFileHandler();
+
+
+
     /**
      * Initializes the controller.
      */
     @FXML
     public void initialize() throws GameException {
-        initVariables();
-        this.gameUno.startGame();
-        updateGridPaneMargin();
-
         applyHoverEffect(exitButton);
         applyHoverEffect(deckButton);
         applyHoverEffect(nextButton);
         applyHoverEffect(backButton);
         applyHoverEffect(unoButton);
 
+    }
+
+    public void initmatch(GameUno game) throws GameException {
+        if(game == null){
+            newGame();
+        }
+        else{
+            loadGameState();
+        }
+    }
+
+    public void newGame() throws GameException {
+        initVariables();
+        this.gameUno.startGame();
+        updateGridPaneMargin();
+
         tableImageView.setImage(this.table.getCurrentCardOnTheTable().getImage()); // mostrar visualmente a carta inciial en la mesa
-        this.humanPlayer.addCard(new Card(UnoEnum.WILD.getFilePath(), "WILD", "BLACK"));
-        this.humanPlayer.addCard(new Card(UnoEnum.FOUR_WILD_DRAW.getFilePath(), "+4", "BLACK"));
         refreshGameView();
 
         threadPlayMachine = new ThreadPlayMachine(this.table, this.machinePlayer, this.tableImageView, this, this.deck);
         threadPlayMachine.start();
 
         threadSingUNOMachine = new ThreadSingUNOMachine(
-            this.humanPlayer.getCardsPlayer(),
-            this.machinePlayer.getCardsPlayer(),
-            this,
-            this.threadPlayMachine
+                this.humanPlayer.getCardsPlayer(),
+                this.machinePlayer.getCardsPlayer(),
+                this,
+                this.threadPlayMachine
         );
         Thread t = new Thread(threadSingUNOMachine, "ThreadSingUNO");
         t.start();
 
         threadWinGame = new ThreadWinGame(
-            this.humanPlayer,
-            this.machinePlayer,
-            this.deck,
-            this
+                this.humanPlayer,
+                this.machinePlayer,
+                this.deck,
+                this
         );
         Thread winThread = new Thread(threadWinGame, "ThreadWinGame");
         winThread.start();
-    }
 
+    }
     /**
      * Initializes the variables for the game.
      */
@@ -283,6 +302,109 @@ public class GameUnoController {
 
         return false;
     }
+
+    public void saveGame() {
+        SerializableFileHandler fileHandler = new SerializableFileHandler();
+        try {
+            fileHandler.serialize(SAVE_FILE_PATH, gameUno);
+            System.out.println("Juego guardado exitosamente.");
+        } catch (Exception e) {
+            System.err.println("Error al guardar el juego: " + e.getMessage());
+        }
+    }
+
+
+    public void loadGameState() {
+        try {
+            SerializableFileHandler handler = new SerializableFileHandler();
+            GameUno loadedGame = (GameUno) handler.deserialize(SAVE_FILE_PATH);
+            System.out.println("Juego cargado correctamente.");
+
+            // Reasignar estado cargado
+            /*if (loadedGame.getHumanPlayer() instanceof Player &&
+                    loadedGame.getMachinePlayer() instanceof Player) {
+
+                this.humanPlayer = loadedGame.getHumanPlayer();
+                this.machinePlayer = loadedGame.getMachinePlayer();
+            } else {
+                throw new IllegalStateException("Los jugadores no son instancias de Player.");
+            }*/
+
+            this.humanPlayer = loadedGame.getHumanPlayer();
+            this.machinePlayer = loadedGame.getMachinePlayer();
+            this.table = loadedGame.getTable();
+            this.deck = loadedGame.getDeck();
+            this.gameUno = new GameUno(this.humanPlayer, this.machinePlayer,this.deck, this.table);
+
+            // Reasignar los hilos deserializados
+            // Recrear hilos con los datos cargados y referencias actuales
+            this.threadPlayMachine = new ThreadPlayMachine(
+                    this.table,
+                    this.machinePlayer,
+                    this.tableImageView,
+                    this,
+                    this.deck
+            );
+
+            this.threadSingUNOMachine = new ThreadSingUNOMachine(
+                    this.humanPlayer.getCardsPlayer(),         // cartas del jugador humano
+                    this.machinePlayer.getCardsPlayer(),        // cartas de la máquina
+                    this,                                 // el controlador
+                    this.threadPlayMachine                // el hilo de la máquina
+            );
+            this.threadWinGame = new ThreadWinGame(this.humanPlayer, this.machinePlayer, this.deck, this);
+
+
+
+            this.threadWinGame.init(this);
+
+            // Iniciar los hilos
+            new Thread(threadPlayMachine, "ThreadPlayMachine").start();
+            new Thread(threadSingUNOMachine, "ThreadSingUNOMachine").start();
+            new Thread(threadWinGame, "ThreadWinGame").start();
+
+
+            updateGameUI();
+
+
+        } catch (IOException | ClassNotFoundException | GameException.ThreadInitializationException e) {
+            System.err.println("Error al cargar el estado del juego: " + e.getMessage());
+        }
+    }
+
+
+    private void updateGameUI() {
+        // Mostrar cartas del jugador humano
+        displayPlayerCards();
+
+        // Mostrar reverso de la carta de la máquina (cantidad de cartas boca abajo)
+        updateMachineCardBack();
+
+        // Mostrar la carta superior en la mesa
+        try {
+            Card topCard = table.getCurrentCardOnTheTable(); // puede lanzar excepción
+            updatePlayedCard(topCard);
+            System.out.println("la carta es: " + topCard.getValue());
+            for(Card c: humanPlayer.getCardsPlayer()){
+                System.out.println("Valor " + c.getValue() );
+            }
+        } catch (GameException.EmptyTableException e) {
+            System.err.println("No hay cartas sobre la mesa para mostrar."); // o dejarlo vacío
+        }
+    }
+
+
+
+
+    public void setupAutoSaveOnClose(Stage stage) {
+        stage.setOnCloseRequest(event -> {
+            saveGame();
+            System.out.println("Juego guardado automáticamente al cerrar.");
+        });
+    }
+
+
+
 
     public void specialCard(Card card, Player currentPlayer, Player otherPlayer) throws GameException.EmptyTableException, GameException.IllegalCardColor, GameException.OutOfCardsInDeck, GameException.NullCardException, GameException.InvalidCardIndex {
         String value = card.getValue();
@@ -666,6 +788,61 @@ public class GameUnoController {
             setMachineSayOne(false);
         } else {
             setTurnLabel("Cannot say UNO at this time");
+        }
+    }
+
+    private void displayPlayerCards() {
+        for(Card c: humanPlayer.getCardsPlayer()){
+            System.out.println("Valor " + c.getValue() );
+        }
+        gridPaneCardsPlayer.getChildren().clear();
+        List<Card> playerCards = humanPlayer.getCardsPlayer();
+
+        for (int i = 0; i < playerCards.size(); i++) {
+            Card card = playerCards.get(i);
+            Image image = new Image(card.getImagePath());
+            System.out.println("ruta de la imagen: " + card.getImagePath());
+            ImageView imageView = new ImageView(image);
+            imageView.setFitHeight(120);
+            imageView.setFitWidth(80);
+            gridPaneCardsPlayer.add(imageView, i, 0);
+        }
+    }
+
+    /*private void displayPlayerCards(ArrayList<Card> cardsPlayer) {
+        gridPaneCardsPlayer.getChildren().clear();
+        List<Card> playerCards = gameUno.getHumanPlayer().getCardsPlayer();
+
+        for (int i = 0; i < playerCards.size(); i++) {
+            Card card = playerCards.get(i);
+            Image image = new Image(card.getImagePath());
+            ImageView imageView = new ImageView(image);
+            imageView.setFitHeight(120);
+            imageView.setFitWidth(80);
+            gridPaneCardsPlayer.add(imageView, i, 0);
+        }
+    }*/
+
+
+    /*private void displayPlayerCards() {
+        displayPlayerCards(gameUno.getHumanPlayer().getCardsPlayer());
+    }*/
+
+
+    private void updatePlayedCard(Card topCard) {
+        if (topCard != null) {
+            tableImageView.setImage(new Image(getClass().getResourceAsStream("/org/example/unogame/cards-uno/" + topCard.getImageName())));
+        }
+    }
+
+    private void updateMachineCardBack() {
+        gridPaneCardsMachine.getChildren().clear();
+        int cardCount = machinePlayer.getCardsPlayer().size(); // Usa getCardsPlayer
+        for (int i = 0; i < cardCount; i++) {
+            ImageView backView = new ImageView(new Image(getClass().getResourceAsStream("/org/example/unogame/cards-uno/back.png")));
+            backView.setFitWidth(80);
+            backView.setFitHeight(120);
+            gridPaneCardsMachine.add(backView, i, 0);
         }
     }
 }

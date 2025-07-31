@@ -3,6 +3,7 @@ package org.example.unogame.model.table;
 import org.example.unogame.model.card.Card;
 import org.example.unogame.model.exception.GameException;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -10,7 +11,7 @@ import java.util.List;
 /**
  * Represents the table in the Uno game where cards are played.
  */
-public class Table {
+public class Table implements Serializable {
     public static class TableRecycleException extends RuntimeException {
         public TableRecycleException(String message) { super(message); }
     }

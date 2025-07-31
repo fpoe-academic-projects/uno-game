@@ -1,5 +1,6 @@
 package org.example.unogame.model.machine;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 
 import org.example.unogame.controller.GameUnoController;
@@ -13,8 +14,8 @@ import javafx.application.Platform;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Alert.AlertType;
 
-public class ThreadWinGame implements Runnable {
-    private GameUnoController gameUnoController;
+public class ThreadWinGame implements Runnable, Serializable {
+    private transient GameUnoController gameUnoController;
     private Player machinePlayer;
     private Player humanPlayer;
     private boolean running = true;
@@ -24,6 +25,13 @@ public class ThreadWinGame implements Runnable {
         this.humanPlayer = humanPlayer;
         this.machinePlayer = machinePlayer;
         this.deckOfCards = deckOfCards;
+        this.gameUnoController = gameUnoController;
+    }
+
+    public void init(GameUnoController gameUnoController) throws GameException.ThreadInitializationException {
+        if (gameUnoController == null) {
+            throw new GameException.ThreadInitializationException("GameUnoController no puede ser null.");
+        }
         this.gameUnoController = gameUnoController;
     }
 
@@ -131,5 +139,7 @@ public class ThreadWinGame implements Runnable {
 
     public void stopThread() {
         running = false;
+        System.out.println("[ThreadWinGame] Hilo detenido.");
     }
+
 }

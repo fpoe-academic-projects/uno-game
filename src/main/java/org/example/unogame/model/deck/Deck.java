@@ -4,13 +4,15 @@ import org.example.unogame.model.exception.GameException;
 import org.example.unogame.model.unoenum.UnoEnum;
 import org.example.unogame.model.card.Card;
 
+import java.io.Serializable;
 import java.util.Collections;
 import java.util.Stack;
 
 /**
  * Represents a deck of Uno cards.
  */
-public class Deck {
+public class Deck implements Serializable {
+    private static final long serialVersionUID = 1L;
     private Stack<Card> deckOfCards;
 
     /**

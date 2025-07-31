@@ -6,22 +6,19 @@ import javafx.scene.shape.Rectangle;
 import org.example.unogame.model.exception.GameException;
 import org.example.unogame.model.unoenum.UnoEnum;
 
+import java.io.Serializable;
+
 /**
  * Represents a card in the Uno game.
  */
-public class Card {
+public class Card implements Serializable {
     private String url;
     private String value;
     private String color;
-    private Image image;
-    private Rectangle cardRectangle;
 
-    /**
-     * Constructs a Card with the specified image URL and name.
-     *
-     * @param url the URL of the card image
-     * @param value of the card
-     */
+    private transient Image image;
+    private transient Rectangle cardRectangle;
+
     public Card(String url, String value, String color) throws GameException {
         if (value == null || value.isEmpty()) {
             throw new GameException.IllegalCardValue("Card value is null or empty.");
@@ -33,41 +30,38 @@ public class Card {
         this.value = value;
         this.color = color;
 
-        var resource = getClass().getResource(url);
-        if (resource == null) {
-            throw new GameException("Card image resource not found: " + url);
-        }
-        this.image = new Image(resource.toString());
-        this.cardRectangle = createCardRectangle();
+        loadImageResources();
     }
 
-
-    // Constructor for testing
+    // Constructor para pruebas unitarias
     public Card(String value, String color) {
-        this.image = null;
         this.value = value;
         this.color = color;
+        this.url = null;
     }
 
-    /**
-     * Creates and configures the ImageView for the card.
-     *
-     * @return the configured ImageView of the card
-     */
+    private void loadImageResources() {
+        if (url != null) {
+            var resource = getClass().getResource(url);
+            if (resource != null) {
+                this.image = new Image(resource.toString());
+                this.cardRectangle = createCardRectangle();
+            }
+        }
+    }
+
     private Rectangle createCardRectangle() {
         Rectangle card = new Rectangle(90, 130);
         card.setFill(new ImagePattern(this.image));
-        card.setArcWidth(10); // Bordes redondeados
+        card.setArcWidth(10);
         card.setArcHeight(10);
         return card;
     }
 
-    // este metodo se usa para que la maquina obtenga la imagen de la parte de atras de la carta del uno
     public static Rectangle getBackCardRectangle() {
         Image backImage = new Image(Card.class.getResource(
                 UnoEnum.CARD_UNO.getFilePath()
         ).toString());
-
         Rectangle cardBack = new Rectangle(90, 130);
         cardBack.setFill(new ImagePattern(backImage));
         cardBack.setArcWidth(10);
@@ -75,22 +69,24 @@ public class Card {
         return cardBack;
     }
 
-    /**
-     * Gets the ImageView representation of the card.
-     *
-     * @return the ImageView of the card
-     */
     public Rectangle getCard() {
+        if (cardRectangle == null) {
+            loadImageResources();
+        }
         return cardRectangle;
     }
 
-    /**
-     * Gets the image of the card.
-     *
-     * @return the Image of the card
-     */
     public Image getImage() {
+        if (image == null) {
+            loadImageResources();
+        }
         return image;
+    }
+
+    public String getImageName() {
+        if (url == null) return null;
+        int lastSlash = url.lastIndexOf('/');
+        return lastSlash >= 0 ? url.substring(lastSlash + 1) : url;
     }
 
     public String getValue() {
@@ -106,6 +102,10 @@ public class Card {
             throw new GameException.IllegalCardColor("Color cannot be null or empty when changing color.");
         }
         this.color = color;
+    }
+
+    public String getImagePath() {
+        return "/org/example/unogame/cards-uno/" + getImageName();
     }
 
 

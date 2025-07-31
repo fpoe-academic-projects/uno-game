@@ -21,8 +21,8 @@
                   <Image url="@images/play_button.png" />
                </image>
             </ImageView>
-            <ImageView fx:id="continueButton" fitHeight="115.0" fitWidth="200.0" pickOnBounds="true" preserveRatio="true">
-               <image>
+            <ImageView fx:id="continueButton" fitHeight="115.0" fitWidth="200.0" onMouseClicked="#handleContinueClicked" pickOnBounds="true" preserveRatio="true">
+            <image>
                   <Image url="@images/continue_button.png" />
                </image>
             </ImageView>

@@ -3,13 +3,14 @@ package org.example.unogame.model.player;
 import org.example.unogame.model.card.Card;
 import org.example.unogame.model.exception.GameException;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 
 /**
  * Interface representing a player in the Uno game.
  * Provides methods to interact with the player's hand of cards.
  */
-public interface IPlayer {
+public interface IPlayer extends Serializable {
 
     /**
      * Adds a card to the player's hand.

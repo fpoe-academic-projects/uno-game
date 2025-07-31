@@ -1,11 +1,13 @@
 package org.example.unogame.model.unoenum;
 
+import java.io.Serializable;
+
 /**
  * Enum UnoEnum
  *
  * This enum represents the various file paths for the images used in the Uno game.
  */
-public enum UnoEnum {
+public enum UnoEnum implements Serializable {
     FAVICON("favicon.png"),
     UNO("images/uno.png"),
     BACKGROUND_UNO("images/background_uno.png"),
